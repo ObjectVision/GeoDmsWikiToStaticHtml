@@ -19,8 +19,12 @@ def get_filename_key_from_md_link(md_link:str, link_open:str="[[", link_close:st
         link_alias = split_md_link[0]
 
     final_link = split_md_link[-1]
-    final_link = final_link.split("/")
-    final_link = final_link[-1]
+    #final_link = final_link.split("/")
+    #if len(final_link) > 2 and "images" in final_link[0]:
+    #    final_link = '/'.join(final_link)
+    #else: 
+    #    final_link = final_link[-1]
+
     key = final_link.replace(" ", "-")
     
     return link_alias, key.lower()
@@ -68,9 +72,6 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
 
 
     header = generate_md_header(name, parent, level, has_children, is_in_navigation)
-    if (is_in_navigation):
-        j = 0
-
     with open(md_fn_raw, "r", encoding="utf-8") as fn:
         text = fn.read()
         links = find_all_internal_markdown_links(text)
@@ -89,10 +90,13 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
                 cleaned_text = cleaned_text.replace(link, f"[{link_alias}]({key})")
             elif key_is_in_images:
                 # [[images/GUI/qt.png]] -> ![qt](assets/img/GUI/qt.png)
+                filename, ext = os.path.splitext(key)
+                image_name = pathlib.Path(filename).stem + ext
+                
                 if "home" in name:
-                    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](assets/img/GUI/{key})")
+                    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](assets/img/GUI/{image_name})")
                 else:
-                    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](../assets/img/GUI/{key})")
+                    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](../assets/img/GUI/{image_name})")
             else: 
                 print(f"{link} {key} {md_fn_raw} is not in dict")
 
@@ -174,7 +178,7 @@ def convert_wiki_to_static_html():
     just_the_docs_template_dir = "template"
     navigation_md_file = "_Sidebar.md"
 
-    reclone_wiki = True
+    reclone_wiki = False
     if reclone_wiki:
         # remove old wiki dir
         if os.path.isdir(wiki_dir):
@@ -202,9 +206,11 @@ def convert_wiki_to_static_html():
         name = make_key_from_md_filename(file)
         if not name:
             continue
-        ext = os.path.splitext(file)[1]
-        name = name + ext
-        wiki_image_dict[name] = file
+
+        name = file.replace("wiki/images\\", "")
+        name = "images/" + name.replace("\\", "/")
+        
+        wiki_image_dict[name.lower()] = file
 
     # create wiki file dict
     wiki_file_dict = {}
