@@ -89,7 +89,10 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
                 cleaned_text = cleaned_text.replace(link, f"[{link_alias}]({key})")
             elif key_is_in_images:
                 # [[images/GUI/qt.png]] -> ![qt](assets/img/GUI/qt.png)
-                cleaned_text = cleaned_text.replace(link, f"![{link_alias}](assets/img/GUI/{key})")
+                if "home" in name:
+                    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](assets/img/GUI/{key})")
+                else:
+                    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](../assets/img/GUI/{key})")
             else: 
                 print(f"{link} {key} {md_fn_raw} is not in dict")
 
@@ -228,6 +231,7 @@ def convert_wiki_to_static_html():
     current_run_dir = os.getcwd()
     os.chdir(just_the_docs_template_dir)
     os.system("bundle exec jekyll serve")
+    os.chdir(current_run_dir)
 
     return
 
