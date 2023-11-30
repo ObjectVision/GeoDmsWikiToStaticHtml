@@ -4,6 +4,6 @@ Github wiki content is generally not allowed to be indexed by third-parties like
 # Installation
 - [Python](https://www.python.org/downloads/)
 - [Ruby](https://jekyllrb.com/docs/installation/)
-- [gems: Jekyll, Bundler](https://jekyllrb.com/docs/)
+- [Gems: Jekyll, Bundler](https://jekyllrb.com/docs/)
 
 # Usage
