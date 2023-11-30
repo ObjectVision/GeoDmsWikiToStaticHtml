@@ -7,3 +7,16 @@ Github wiki content is generally not allowed to be indexed by third-parties like
 - [Gems: Jekyll, Bundler](https://jekyllrb.com/docs/)
 
 # Usage
+- git clone https://github.com/ObjectVision/GeoDmsWikiToStaticHtml.git
+- Change parameter *wiki_git_url* in convert_wiki_to_static_html.py to the a Github wiki repository of your choice
+- Change directory in terminal to GeoDmsWikiToStaticHtml
+- From command line: python convert_wiki_to_static_html.py
+
+This will run through several steps:
+- Clone the wiki repository locally
+- Parse the _Sidebar.md and use it as navigation bar
+- Convert internal image and file links "[[ ]]" to "[]()" format
+- Run: bundle exec jekyll serve
+
+If all went well the static html pages are build and served locally.
+Major thanks to [just the docs](https://just-the-docs.com/) for their awesome template.
