@@ -42,7 +42,7 @@ def generate_md_header(name:str, parent:str, level:int, has_children:bool, is_in
     if (parent):
         header += f"parent: {parent}\n"
 
-    if not is_in_navigation:
+    if not is_in_navigation and not "home" in name:
         header += "nav_exclude: true\n"
     else:
         header += f"nav_order: {level}\n"
@@ -93,11 +93,12 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
             else: 
                 print(f"{link} {key} {md_fn_raw} is not in dict")
 
-    with open(f"{md_fldr_out}/{name}.md", "w", encoding="utf8") as f:
+    output_filename = f"{md_fldr_out}/{name}.md"
+    with open(output_filename, "w", encoding="utf8") as f:
         f.write(cleaned_text)
 
 
-    return
+    return output_filename
 
 def get_number_of_leading_spaces(line:str) -> int:
     number_of_spaces = 0
@@ -167,10 +168,10 @@ def convert_wiki_to_static_html():
     # params
     wiki_git_url = "https://github.com/ObjectVision/GeoDMS.wiki.git"
     wiki_dir = "wiki"
-    wiki_dir_cleaned = "wiki_dir_cleaned"
+    just_the_docs_template_dir = "template"
     navigation_md_file = "_Sidebar.md"
 
-    reclone_wiki = False
+    reclone_wiki = True
     if reclone_wiki:
         # remove old wiki dir
         if os.path.isdir(wiki_dir):
@@ -179,19 +180,18 @@ def convert_wiki_to_static_html():
         os.system(f"git clone {wiki_git_url} {wiki_dir}")
 
     # remove old cleaned wiki dir
-    if os.path.isdir(wiki_dir_cleaned):
-        os.system(f"rmdir {wiki_dir_cleaned} /s /q")
+    docs_folder = f"{just_the_docs_template_dir}\\docs"
+    if os.path.isdir(docs_folder):
+        os.system(f"rmdir {docs_folder} /s /q")
 
+    if os.path.isdir(f"{just_the_docs_template_dir}\\assets\\img"):
+        os.system(f"rmdir {just_the_docs_template_dir}\\assets\\img /s /q")
+    
     # output
-    os.mkdir(wiki_dir_cleaned)
-    os.mkdir(f"{wiki_dir_cleaned}/assets")
-    os.mkdir(f"{wiki_dir_cleaned}/docs")
-
-    # copy wiki md files to docs
-    #shutil.copytree(f"{wiki_dir}/*.md", f"{wiki_dir_cleaned}/docs")
+    os.mkdir(f"{just_the_docs_template_dir}/docs")
 
     # copy wiki images to /assets/img folder
-    shutil.copytree(f"{wiki_dir}/images", f"{wiki_dir_cleaned}/assets/img")
+    shutil.copytree(f"{wiki_dir}/images", f"{just_the_docs_template_dir}/assets/img")
 
     wiki_image_dict = {}
     wiki_image_files =  glob.glob(f"{wiki_dir}/images/**", recursive=True)
@@ -218,17 +218,16 @@ def convert_wiki_to_static_html():
             print("TODO: implement _Footer parsing.")
             continue
 
-        if "Home" in file:
-            shutil.copy(file, f"{wiki_dir_cleaned}/index.md")
-            continue
-
-        #shutil.copy(file, f"{wiki_dir_cleaned}/docs/{name}.md")
-
+    # convert links in each file
     for file in wiki_md_files:
-        cleaned_md_file = clean_md_file(file, f"{wiki_dir_cleaned}/docs", wiki_file_dict, wiki_image_dict, navigation_structure)
+        cleaned_md_filename = clean_md_file(file, f"{just_the_docs_template_dir}/docs", wiki_file_dict, wiki_image_dict, navigation_structure)
+        if "home" in cleaned_md_filename:
+            shutil.move(cleaned_md_filename, f"{just_the_docs_template_dir}/index.md")
 
-    #print(wiki_file_dict)
-    print(f"num wiki md files: {len(wiki_md_files)}")
+    # run jekyll
+    current_run_dir = os.getcwd()
+    os.chdir(just_the_docs_template_dir)
+    os.system("bundle exec jekyll serve")
 
     return
 
