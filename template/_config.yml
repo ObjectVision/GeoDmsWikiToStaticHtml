@@ -9,3 +9,10 @@ back_to_top: true
 back_to_top_text: "Back to top"
 aux_links:
   GeoDms on Github: https://github.com/ObjectVision/GeoDMS
+
+nav_external_links:
+  - title: Releases
+    url: https://github.com/ObjectVision/GeoDMS/releases
+    hide_icon: false # set to true to hide the external link icon
+    opens_in_new_tab: true # set to true to open this link in a new tab
+    parent: Software
