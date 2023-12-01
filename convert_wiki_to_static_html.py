@@ -42,6 +42,7 @@ def generate_md_header(name:str, parent:str, level:int, has_children:bool, is_in
 
     if has_children:
         header += "has_children: true\n"
+        header += "nav_fold : true\n"
 
     if (parent):
         header += f"parent: {parent}\n"
@@ -73,11 +74,17 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
 
     header = generate_md_header(name, parent, level, has_children, is_in_navigation)
     with open(md_fn_raw, "r", encoding="utf-8") as fn:
+        names_with_big_tables_and_sup = {"value-type":False}
+        
         text = fn.read()
         links = find_all_internal_markdown_links(text)
 
         cleaned_text = f"{header}{text}"
 
+        if (name in names_with_big_tables_and_sup):
+            cleaned_text = cleaned_text.replace("<sup>", "")
+            cleaned_text = cleaned_text.replace("</sup>", "")
+        
         for link in links:
             link_alias, key = get_filename_key_from_md_link(link)
             key_is_in_files = key in wiki_file_dict 
@@ -147,7 +154,6 @@ def get_navigation_structure_from_sidebar(sidebar_fn:str):
             if "annex" in key: 
                 j  = 0
 
-
             parent = None
             if len(parent_stack): 
                 parent = parent_stack[-1][0]
@@ -156,8 +162,6 @@ def get_navigation_structure_from_sidebar(sidebar_fn:str):
                 parent = parent_stack.pop()[0]
                 if not len(parent_stack): 
                     parent = None
-
-
 
             if leading_spaces > previous_level:
                 if previous_parent:
@@ -180,7 +184,7 @@ def convert_wiki_to_static_html():
     just_the_docs_template_dir = "template"
     navigation_md_file = "_Sidebar.md"
 
-    reclone_wiki = False
+    reclone_wiki = True
     if reclone_wiki:
         # remove old wiki dir
         if os.path.isdir(wiki_dir):
