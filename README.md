@@ -20,3 +20,9 @@ This will run through several steps:
 
 If all went well the static html pages are build and served locally.
 Major thanks to [just the docs](https://just-the-docs.com/) for their awesome template.
+
+# Testing
+When done building, go into the template/_Site folder. From there any static html host tool can be used. For instance:
+```
+python -m http.server 8000
+```
