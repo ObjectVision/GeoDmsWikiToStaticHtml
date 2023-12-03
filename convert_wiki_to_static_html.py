@@ -101,6 +101,12 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
                 # [[images/GUI/qt.png]] -> ![qt](assets/img/GUI/qt.png)
                 filename, ext = os.path.splitext(key)
                 image_name = pathlib.Path(filename).stem + ext
+                mid_path = ""
+                if "/GUI/" in filename: # TODO: generalize this
+                    mid_path = "/GUI"
+
+                if "/GUI/tools" in filename:
+                    mid_path = "/GUI/tools"
                 
                 if "home" in name:
                     cleaned_text = cleaned_text.replace(link, f"![{link_alias}](assets/img/GUI/{image_name})")
