@@ -1,5 +1,5 @@
 title: GeoDMS wiki
-description: A starter template for a Jeykll site using the Just the Docs theme!
+description: GeoDms documentation
 theme: just-the-docs
 
 url: https://just-the-docs.github.io
@@ -7,6 +7,8 @@ math: mathjax
 color_scheme: wider
 back_to_top: true
 back_to_top_text: "Back to top"
+#logo: "/assets/img/GeoDmsGuiQt.png"
+
 aux_links:
   GeoDms on Github: https://github.com/ObjectVision/GeoDMS
 
