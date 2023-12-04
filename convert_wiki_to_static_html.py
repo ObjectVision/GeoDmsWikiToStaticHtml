@@ -108,10 +108,13 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
                 if "/GUI/tools" in filename:
                     mid_path = "/GUI/tools"
                 
+                mid_path = key.replace("images/", "")
+                mid_path = mid_path.replace(image_name, "")
+
                 if "home" in name:
-                    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](assets/img/GUI/{image_name})")
+                    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](assets/img/{mid_path}{image_name})")
                 else:
-                    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](../assets/img/GUI/{image_name})")
+                    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](../assets/img/{mid_path}{image_name})")
             else: 
                 print(f"{link} {key} {md_fn_raw} is not in dict")
 
