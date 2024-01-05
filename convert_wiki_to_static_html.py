@@ -40,6 +40,11 @@ def generate_md_header(name:str, parent:str, level:int, has_children:bool, is_in
     header += f"title: {name}\n"
     header += f"layout: default\n"
 
+    #if "home" in name:
+    #    header += f"permalink: /\n"
+    #else:
+    #    header += f"permalink: {name}/\n"
+
     if has_children:
         header += "has_children: true\n"
         header += "nav_fold : true\n"
@@ -71,7 +76,6 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
     if (is_in_navigation):
         parent, level, has_children = navigation_structure[name]
 
-
     header = generate_md_header(name, parent, level, has_children, is_in_navigation)
     with open(md_fn_raw, "r", encoding="utf-8") as fn:
         names_with_big_tables_and_sup = {"value-type":False}
@@ -95,8 +99,8 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
                 if not link_alias:
                     link_alias = key
                 if "home" in name:
-                    key = f"docs/{key}"
-                cleaned_text = cleaned_text.replace(link, f"[{link_alias}]({key})")
+                    key = f"docs/{key}.html"
+                cleaned_text = cleaned_text.replace(link, f"[{link_alias}]({key}.html)")
             elif key_is_in_images:
                 # [[images/GUI/qt.png]] -> ![qt](assets/img/GUI/qt.png)
                 filename, ext = os.path.splitext(key)
@@ -111,10 +115,10 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
                 mid_path = key.replace("images/", "")
                 mid_path = mid_path.replace(image_name, "")
 
-                if "home" in name:
-                    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](assets/img/{mid_path}{image_name})")
-                else:
-                    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](../assets/img/{mid_path}{image_name})")
+                #if "home" in name:
+                cleaned_text = cleaned_text.replace(link, f"![{link_alias}](/assets/img/{mid_path}{image_name})")
+                #else:
+                #    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](../assets/img/{mid_path}{image_name})")
             else: 
                 print(f"{link} {key} {md_fn_raw} is not in dict")
 
@@ -124,6 +128,39 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
 
 
     return output_filename
+
+def clean_html_files(html_folder:str):
+    html_files = glob.glob(f"{html_folder}/**/*.html", recursive=True)
+    for html_file in html_files:
+        print(f"LETS GO {html_file}")
+        clean_html_file(html_file)
+
+def clean_html_file(html_fn_raw:str):
+
+    text = ""
+    with open(html_fn_raw, "r", encoding="utf-8") as fn:
+        text = fn.read()
+
+    is_index_page = "index" in html_fn_raw
+
+    prefix = "../"
+    if is_index_page:
+        prefix = ""
+
+    text = text.replace("/assets", f"{prefix}assets")
+    text = text.replace("..../assets", f"../assets")
+    text = text.replace('<a href="/" class="nav-list-link">home', f'<a href="{prefix}index.html" class="nav-list-link">home')
+    text = text.replace('<li class="nav-list-item">', '<li class="nav-list-item active">')
+    text = text.replace('aria-pressed="false"', 'aria-pressed="true"')
+    #text = text.replace('class="nav-list-item"><a href="docs/', 'class="nav-list-item"><a href="')
+
+    text = text.replace("/docs", f"docs")
+    if not is_index_page:
+        text = text.replace("docs/", f"")
+
+    with open(html_fn_raw, "w", encoding="utf-8") as fn:
+        fn.write(text)
+
 
 def get_number_of_leading_spaces(line:str) -> int:
     number_of_spaces = 0
@@ -193,7 +230,7 @@ def convert_wiki_to_static_html():
     just_the_docs_template_dir = "template"
     navigation_md_file = "_Sidebar.md"
 
-    reclone_wiki = True
+    reclone_wiki = False
     if reclone_wiki:
         # remove old wiki dir
         if os.path.isdir(wiki_dir):
@@ -218,6 +255,9 @@ def convert_wiki_to_static_html():
     wiki_image_dict = {}
     wiki_image_files =  glob.glob(f"{wiki_dir}/images/**", recursive=True)
     for file in wiki_image_files:
+        #if ("qt.png" in file):
+        #    i = 0
+
         name = make_key_from_md_filename(file)
         if not name:
             continue
@@ -251,6 +291,12 @@ def convert_wiki_to_static_html():
     # run jekyll
     current_run_dir = os.getcwd()
     os.chdir(just_the_docs_template_dir)
+    os.system("bundle exec jekyll build")
+    
+    # clean html files
+    clean_html_files("_site")
+
+    # serve using jekyll
     os.system("bundle exec jekyll serve")
     os.chdir(current_run_dir)
 
