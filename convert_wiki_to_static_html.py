@@ -132,7 +132,6 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
 def clean_html_files(html_folder:str):
     html_files = glob.glob(f"{html_folder}/**/*.html", recursive=True)
     for html_file in html_files:
-        print(f"LETS GO {html_file}")
         clean_html_file(html_file)
 
 def clean_html_file(html_fn_raw:str):
@@ -161,6 +160,82 @@ def clean_html_file(html_fn_raw:str):
     with open(html_fn_raw, "w", encoding="utf-8") as fn:
         fn.write(text)
 
+
+def format_json_search_file_content(json_fn:str):
+    
+    #{"0": {
+    #"doc": "(registry)-settings",
+    #"title": "registry path",
+    #"content": "The path for most of the settings in the registry is: . Computer\\HKEY_CURRENT_USER\\Software\\ObjectVision\\%ComputerName%\\GeoDMS. This means the settings are user and machine specific. Only the set of recent files is located in: . Computer\\HKEY_CURRENT_USER\\Software\\ObjectVision\\DMS\\RecentFiles . In earlier versions settings were also stored in Computer\\HKEY_CURRENT_USER\\Software\\ObjectVision\\DMS. You might find some settings here, but new GeoDMS versions do not use these anymore. ",
+    #"url": "/docs/(registry)-settings.html#registry-path",
+    
+    lines = []
+    text = ""
+    with open(json_fn, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    
+    for line in lines:
+        split_line = line.split(":")
+        if len(split_line) == 1:
+            continue
+
+        first_part = ""
+        second_part = ""
+
+        if len(split_line) > 0:
+            first_part = f"{split_line[0]}:"
+        if len(split_line) > 1:
+            is_first = True
+            for part in split_line[1:]:
+                if is_first:
+                    is_first = False
+                    if part[0] == " ":
+                        part = part[1:]
+                second_part = f"{second_part}{part}"
+            second_part = second_part.replace("\"", "")
+            second_part = second_part.replace("'", "")
+            second_part = second_part.replace("\n", "")
+            second_part = second_part.replace(",", "")
+            second_part = second_part.replace(":", "")
+
+        
+
+        second_postfix = ","
+        quotes = "\""
+        if second_part and second_part[-1] == "{":
+            second_postfix = ""
+            quotes = ""
+
+        if "relUrl" in first_part:
+            second_postfix = ""
+
+        line = f"{first_part}{quotes}{second_part}{quotes}{second_postfix}"
+        line = line.replace(":,", "")
+        line = line.replace("\n", "")
+        line = line.replace("'", "")
+        line = line.replace("\"\"", "")
+        line = line.replace("\\""", "")
+        line = line.replace("\\", "/")
+        line = line.replace(";", "")
+        text = f"{text} {line}"
+    return text + "}}"
+
+def merge_json_into_just_the_docs_js(follow_the_docs_js_original_fn:str="_site/assets/js/just-the-docs.js"):
+    search_data_formatted_line = format_json_search_file_content("_site/assets/js/search-data.json")
+
+    js_script = ""
+    with open(follow_the_docs_js_original_fn, "r", encoding="utf-8") as f:
+        js_script = f.read()
+
+    replace_text = "var request = new XMLHttpRequest();\n  request.open('GET', '/assets/js/search-data.json', true);\n\n  request.onload = function(){\n    if (request.status >= 200 && request.status < 400) {\n      var docs = JSON.parse(request.responseText);\n"    
+    js_script = js_script.replace(replace_text, f"var docs = JSON.parse('{search_data_formatted_line}');")
+    
+    replace_text = "    } else {\n      console.log('Error loading ajax request. Request status:' + request.status);\n    }\n  };\n\n  request.onerror = function(){\n    console.log('There was a connection error');\n  };\n\n  request.send();"
+    js_script = js_script.replace(replace_text, "")
+    
+    #js_script = js_script.replace("    } else {\n      console.log('Error loading ajax request. Request status:' + request.status);\n    }\n  };", )
+    with open(follow_the_docs_js_original_fn, "w", encoding="utf-8") as f:
+        f.write(js_script)
 
 def get_number_of_leading_spaces(line:str) -> int:
     number_of_spaces = 0
@@ -295,6 +370,7 @@ def convert_wiki_to_static_html():
     
     # clean html files
     clean_html_files("_site")
+    merge_json_into_just_the_docs_js()
 
     # serve using jekyll
     os.system("bundle exec jekyll serve")
