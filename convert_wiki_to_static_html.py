@@ -152,7 +152,7 @@ def clean_html_file(html_fn_raw:str):
     text = text.replace('<a href="/" class="nav-list-link">home', f'<a href="{prefix}index.html" class="nav-list-link">home')
     text = text.replace('<li class="nav-list-item">', '<li class="nav-list-item active">')
     text = text.replace('aria-pressed="false"', 'aria-pressed="true"')
-    #text = text.replace('class="nav-list-item"><a href="docs/', 'class="nav-list-item"><a href="')
+    text = text.replace('/favicon.ico', f'{prefix}favicon.ico')
 
     text = text.replace("/docs", f"docs")
     if not is_index_page:
