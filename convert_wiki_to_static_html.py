@@ -227,8 +227,17 @@ def merge_json_into_just_the_docs_js(follow_the_docs_js_original_fn:str="_site/a
     with open(follow_the_docs_js_original_fn, "r", encoding="utf-8") as f:
         js_script = f.read()
 
+    #var path = window.location.pathname;
+    #var html_page_name = path.split("/").pop();
+    #if (html_page_name.includes('index')) {
+    #    search_data = search_data.replace(/\/docs/g, "docs");
+    #}
+    #else {
+    #    search_data = search_data.replace(/\/docs/g, "../docs");
+    #}
+
     replace_text = "var request = new XMLHttpRequest();\n  request.open('GET', '/assets/js/search-data.json', true);\n\n  request.onload = function(){\n    if (request.status >= 200 && request.status < 400) {\n      var docs = JSON.parse(request.responseText);\n"    
-    js_script = js_script.replace(replace_text, f"var docs = JSON.parse('{search_data_formatted_line}');")
+    js_script = js_script.replace(replace_text, f"let search_data = '{search_data_formatted_line}';\n  var path = window.location.pathname;\n  var html_page_name = path.split(\"/\").pop();\n  if (html_page_name.includes('index')) {{\n    search_data = search_data.replace(/\/docs/g, \"docs\");\n  }}\n  else {{\n   search_data = search_data.replace(/\\/docs/g, \"../docs\");\n}}\n var docs = JSON.parse(search_data);")
     
     replace_text = "    } else {\n      console.log('Error loading ajax request. Request status:' + request.status);\n    }\n  };\n\n  request.onerror = function(){\n    console.log('There was a connection error');\n  };\n\n  request.send();"
     js_script = js_script.replace(replace_text, "")
