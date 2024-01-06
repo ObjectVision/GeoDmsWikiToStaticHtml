@@ -99,7 +99,7 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
                 if not link_alias:
                     link_alias = key
                 if "home" in name:
-                    key = f"docs/{key}.html"
+                    key = f"docs/{key}"
                 cleaned_text = cleaned_text.replace(link, f"[{link_alias}]({key}.html)")
             elif key_is_in_images:
                 # [[images/GUI/qt.png]] -> ![qt](assets/img/GUI/qt.png)
