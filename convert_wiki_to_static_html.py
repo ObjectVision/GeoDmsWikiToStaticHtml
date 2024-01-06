@@ -146,9 +146,13 @@ def clean_html_file(html_fn_raw:str):
     if is_index_page:
         prefix = ""
 
+    text = text.replace('<a href="/"', f'<a href="{prefix}index.html"')
+
     text = text.replace("/assets", f"{prefix}assets")
     text = text.replace("..../assets", f"../assets")
-    text = text.replace('<a href="/" class="nav-list-link">home', f'<a href="{prefix}index.html" class="nav-list-link">home')
+    #text = text.replace('<a href="/" class="nav-list-link">home', f'<a href="{prefix}index.html" class="nav-list-link">home')
+
+    # set tabs open
     text = text.replace('<li class="nav-list-item">', '<li class="nav-list-item active">')
     text = text.replace('aria-pressed="false"', 'aria-pressed="true"')
     text = text.replace('/favicon.ico', f'{prefix}favicon.ico')
