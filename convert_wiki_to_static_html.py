@@ -340,6 +340,10 @@ def convert_wiki_to_static_html():
     # copy wiki images to /assets/img folder
     shutil.copytree(f"{wiki_dir}/images", f"{just_the_docs_template_dir}/assets/img")
 
+    # make all items lower case
+    os.system(f"for /r \"{just_the_docs_template_dir}/assets/img\" %D in (.) do @for /f \"eol=: delims=\" %F in ('dir /l/b/ad \"%D\"') do @ren \"%D\%F\" \"%F\"")
+    os.system(f"for /r \"{just_the_docs_template_dir}/assets/img\" %D in (.) do @for /f \"eol=: delims=\" %F in ('dir /l/b/a-d \"%D\"') do @ren \"%D\%F\" \"%F\"")
+
     wiki_image_dict = {}
     wiki_image_files =  glob.glob(f"{wiki_dir}/images/**", recursive=True)
     for file in wiki_image_files:
