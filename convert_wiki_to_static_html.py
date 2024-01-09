@@ -107,10 +107,10 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
                 image_name = pathlib.Path(filename).stem + ext
                 mid_path = ""
                 if "/GUI/" in filename: # TODO: generalize this
-                    mid_path = "/GUI"
+                    mid_path = "/gui"
 
                 if "/GUI/tools" in filename:
-                    mid_path = "/GUI/tools"
+                    mid_path = "/gui/tools"
                 
                 mid_path = key.replace("images/", "")
                 mid_path = mid_path.replace(image_name, "")
