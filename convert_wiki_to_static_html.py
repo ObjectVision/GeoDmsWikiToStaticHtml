@@ -42,9 +42,11 @@ def find_all_internal_markdown_links(text:str):
 def find_all_external_markdown_links(text:str):
     return re.findall(r"\[[^\[\]\v]+\]",text)
 
-def generate_md_header(base_name:str, name:str, parent:str, level:int, has_children:bool, is_in_navigation:bool):
+def generate_md_header(base_name:str, name:str, parent, level:int, has_children:bool, is_in_navigation:bool):
+    display_name = base_name.replace("-", " ")
+    
     header  = "---\n"
-    header += f"title: {name}\n"
+    header += f"title: {display_name}\n"
     header += f"layout: default\n"
 
     #if "home" in name:
@@ -57,7 +59,8 @@ def generate_md_header(base_name:str, name:str, parent:str, level:int, has_child
         header += "nav_fold : true\n"
 
     if (parent):
-        header += f"parent: {parent[0]}\n"
+        display_parent_name = parent[1].replace("-", " ")
+        header += f"parent: {display_parent_name}\n"
 
     if not is_in_navigation and not "home" in name:
         header += "nav_exclude: true\n"
@@ -356,9 +359,6 @@ def convert_wiki_to_static_html():
     wiki_image_dict = {}
     wiki_image_files =  glob.glob(f"{wiki_dir}/images/**", recursive=True)
     for file in wiki_image_files:
-        #if ("qt.png" in file):
-        #    i = 0
-
         base_name, name, dir_name = make_key_from_md_filename(file)
         if not name:
             continue
@@ -377,6 +377,9 @@ def convert_wiki_to_static_html():
 
         if "_Sidebar" in file:
             navigation_structure = get_navigation_structure_from_sidebar(file)
+            print()
+            print(navigation_structure)
+            print()
             continue
 
         if "_Footer" in file:
