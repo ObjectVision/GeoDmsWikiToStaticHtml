@@ -79,6 +79,7 @@ def generate_md_header(base_name:str, name:str, parent, level:int, has_children:
 
 def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navigation_structure):
     base_name, name, dir_name = make_key_from_md_filename(md_fn_raw)
+    display_name = base_name.replace("-", " ")
     if (name=="software"):
         i = 0
     is_in_navigation = name in navigation_structure
@@ -131,7 +132,7 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
                 #    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](../assets/img/{mid_path}{image_name})")
             else: 
                 print(f"{link} {key} {md_fn_raw} is not in dict")
-    cleaned_text = f"{header}{cleaned_text}"
+    cleaned_text = f"{header}# **{display_name}**\n{cleaned_text}"
     output_filename = f"{md_fldr_out}/{name}.md"
     with open(output_filename, "w", encoding="utf8") as f:
         f.write(cleaned_text)
