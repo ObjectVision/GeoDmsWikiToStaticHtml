@@ -5,7 +5,13 @@ import re
 import pathlib
 
 def make_key_from_md_filename(filename):
-    return os.path.splitext(os.path.basename(filename).replace(" ", "-"))[0].lower()
+    base_filename =os.path.splitext(os.path.basename(filename))[0]
+    key_filename = os.path.splitext(os.path.basename(filename).replace(" ", "-"))[0].lower()
+    dir_name = os.path.dirname(filename)
+    dir_name = dir_name.replace("_site\\\\", "")
+    dir_name = dir_name.replace("\\", "/")
+    dir_name = dir_name.replace("_site", "")
+    return (base_filename, key_filename, dir_name)
 
 def get_filename_key_from_md_link(md_link:str, link_open:str="[[", link_close:str="]]") -> str:
     new_md_link = md_link.replace(link_open, "")
@@ -25,9 +31,10 @@ def get_filename_key_from_md_link(md_link:str, link_open:str="[[", link_close:st
     #else: 
     #    final_link = final_link[-1]
 
+    key_raw = final_link
     key = final_link.replace(" ", "-")
     
-    return link_alias, key.lower()
+    return link_alias, key_raw, key.lower()
 
 def find_all_internal_markdown_links(text:str):
     return re.findall(r"\[\[[^\[\]\v]+\]\]",text)
@@ -35,7 +42,7 @@ def find_all_internal_markdown_links(text:str):
 def find_all_external_markdown_links(text:str):
     return re.findall(r"\[[^\[\]\v]+\]",text)
 
-def generate_md_header(name:str, parent:str, level:int, has_children:bool, is_in_navigation:bool):
+def generate_md_header(base_name:str, name:str, parent:str, level:int, has_children:bool, is_in_navigation:bool):
     header  = "---\n"
     header += f"title: {name}\n"
     header += f"layout: default\n"
@@ -50,7 +57,7 @@ def generate_md_header(name:str, parent:str, level:int, has_children:bool, is_in
         header += "nav_fold : true\n"
 
     if (parent):
-        header += f"parent: {parent}\n"
+        header += f"parent: {parent[0]}\n"
 
     if not is_in_navigation and not "home" in name:
         header += "nav_exclude: true\n"
@@ -68,7 +75,7 @@ def generate_md_header(name:str, parent:str, level:int, has_children:bool, is_in
     return header
 
 def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navigation_structure):
-    name = make_key_from_md_filename(md_fn_raw)
+    base_name, name, dir_name = make_key_from_md_filename(md_fn_raw)
     if (name=="software"):
         i = 0
     is_in_navigation = name in navigation_structure
@@ -76,21 +83,21 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
     if (is_in_navigation):
         parent, level, has_children = navigation_structure[name]
 
-    header = generate_md_header(name, parent, level, has_children, is_in_navigation)
+    header = generate_md_header(base_name, name, parent, level, has_children, is_in_navigation)
     with open(md_fn_raw, "r", encoding="utf-8") as fn:
         names_with_big_tables_and_sup = {"value-type":False}
         
         text = fn.read()
         links = find_all_internal_markdown_links(text)
 
-        cleaned_text = f"{header}{text}"
+        cleaned_text = f"{text}"
 
         if (name in names_with_big_tables_and_sup):
             cleaned_text = cleaned_text.replace("<sup>", "")
             cleaned_text = cleaned_text.replace("</sup>", "")
         
         for link in links:
-            link_alias, key = get_filename_key_from_md_link(link)
+            link_alias, key_raw, key = get_filename_key_from_md_link(link)
             key_is_in_files = key in wiki_file_dict 
             key_is_in_images = key in wiki_image_dict
 
@@ -121,7 +128,7 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
                 #    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](../assets/img/{mid_path}{image_name})")
             else: 
                 print(f"{link} {key} {md_fn_raw} is not in dict")
-
+    cleaned_text = f"{header}{cleaned_text}"
     output_filename = f"{md_fldr_out}/{name}.md"
     with open(output_filename, "w", encoding="utf8") as f:
         f.write(cleaned_text)
@@ -134,36 +141,31 @@ def clean_html_files(html_folder:str):
     for html_file in html_files:
         clean_html_file(html_file)
 
-def clean_html_file(html_fn_raw:str):
-
+def clean_html_file(html_fn_raw:str, set_nav_tabs_open:bool=True, convert_paths_for_local_use:bool=False):
     text = ""
     with open(html_fn_raw, "r", encoding="utf-8") as fn:
         text = fn.read()
 
-    is_index_page = "index" in html_fn_raw
-
     prefix = "../"
+    is_index_page = "index" in html_fn_raw
     if is_index_page:
         prefix = ""
+    
+    if (convert_paths_for_local_use):
+        text = text.replace('<a href="/"', f'<a href="{prefix}index.html"')
+        text = text.replace("/assets", f"{prefix}assets")
+        text = text.replace("..../assets", f"../assets")
+        text = text.replace("/docs", f"docs")
+        if not is_index_page:
+            text = text.replace("docs/", f"")
 
-    text = text.replace('<a href="/"', f'<a href="{prefix}index.html"')
-
-    text = text.replace("/assets", f"{prefix}assets")
-    text = text.replace("..../assets", f"../assets")
-    #text = text.replace('<a href="/" class="nav-list-link">home', f'<a href="{prefix}index.html" class="nav-list-link">home')
-
-    # set tabs open
-    text = text.replace('<li class="nav-list-item">', '<li class="nav-list-item active">')
-    text = text.replace('aria-pressed="false"', 'aria-pressed="true"')
-    text = text.replace('/favicon.ico', f'{prefix}favicon.ico')
-
-    text = text.replace("/docs", f"docs")
-    if not is_index_page:
-        text = text.replace("docs/", f"")
+    if (set_nav_tabs_open):
+        text = text.replace('<li class="nav-list-item">', '<li class="nav-list-item active">')
+        text = text.replace('aria-pressed="false"', 'aria-pressed="true"')
+        text = text.replace('/favicon.ico', f'{prefix}favicon.ico')
 
     with open(html_fn_raw, "w", encoding="utf-8") as fn:
         fn.write(text)
-
 
 def format_json_search_file_content(json_fn:str):
     
@@ -201,8 +203,6 @@ def format_json_search_file_content(json_fn:str):
             second_part = second_part.replace("\n", "")
             second_part = second_part.replace(",", "")
             second_part = second_part.replace(":", "")
-
-        
 
         second_postfix = ","
         quotes = "\""
@@ -281,12 +281,9 @@ def get_navigation_structure_from_sidebar(sidebar_fn:str):
 
             key = None
             if internal_links:
-                link_alias, key = get_filename_key_from_md_link(internal_links[0])
+                link_alias, raw_key, key = get_filename_key_from_md_link(internal_links[0])
             else:
-                link_alias, key = get_filename_key_from_md_link(external_links[0], "[", "]")
-            
-            if "annex" in key: 
-                j  = 0
+                link_alias, raw_key, key = get_filename_key_from_md_link(external_links[0], "[", "]")
 
             parent = None
             if len(parent_stack): 
@@ -304,12 +301,24 @@ def get_navigation_structure_from_sidebar(sidebar_fn:str):
 
             navigation_structure[key] = [parent, level, False]
             if parent:
-                navigation_structure[parent][2] = True
+                navigation_structure[parent[0]][2] = True
 
-            previous_parent = key
+            previous_parent = [key,raw_key]
             previous_level = leading_spaces
 
     return navigation_structure
+
+def generate_sitemap(output_fn):
+    site_html_files = glob.glob(f"_site/**/*.html", recursive=True)
+    html_pages = []
+    for f in site_html_files:
+        base_name, name, dir_name= make_key_from_md_filename(f)
+        html_pages.append(f"https://www.geodms.nl{dir_name}/{base_name}.html")
+
+    with open(output_fn, "w") as fn:
+        for page in html_pages:
+            fn.write(f"{page}\n")
+    return
 
 def convert_wiki_to_static_html():
     # params
@@ -318,7 +327,7 @@ def convert_wiki_to_static_html():
     just_the_docs_template_dir = "template"
     navigation_md_file = "_Sidebar.md"
 
-    reclone_wiki = False
+    reclone_wiki = True
     if reclone_wiki:
         # remove old wiki dir
         if os.path.isdir(wiki_dir):
@@ -350,7 +359,7 @@ def convert_wiki_to_static_html():
         #if ("qt.png" in file):
         #    i = 0
 
-        name = make_key_from_md_filename(file)
+        base_name, name, dir_name = make_key_from_md_filename(file)
         if not name:
             continue
 
@@ -363,7 +372,7 @@ def convert_wiki_to_static_html():
     wiki_file_dict = {}
     wiki_md_files = glob.glob(f"{wiki_dir}/**/*.md", recursive=True)
     for file in wiki_md_files:
-        name = make_key_from_md_filename(file)
+        base_name, name, dir_name = make_key_from_md_filename(file)
         wiki_file_dict[name] = file
 
         if "_Sidebar" in file:
@@ -387,10 +396,14 @@ def convert_wiki_to_static_html():
     
     # clean html files
     clean_html_files("_site")
-    merge_json_into_just_the_docs_js()
+    generate_sitemap("_site/sitemap.txt")
+    #merge_json_into_just_the_docs_js()
 
     # serve using jekyll
-    os.system("bundle exec jekyll serve")
+    os.chdir("_site")
+    os.system("python -m http.server 8000")
+    
+    #os.system("bundle exec jekyll serve")
     os.chdir(current_run_dir)
 
     return
