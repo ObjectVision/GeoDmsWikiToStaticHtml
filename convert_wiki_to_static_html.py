@@ -89,7 +89,7 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
 
     header = generate_md_header(base_name, name, parent, level, has_children, is_in_navigation)
     with open(md_fn_raw, "r", encoding="utf-8") as fn:
-        names_with_big_tables_and_sup = {"value-type":False}
+        names_with_big_tables_and_sup = {"value-type":True, "null":True}
         
         text = fn.read()
         links = find_all_internal_markdown_links(text)
