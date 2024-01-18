@@ -11,12 +11,12 @@ back_to_top_text: "Back to top"
 #logo: "/assets/img/GeoDmsGuiQt.png"
 
 footer_content: "GeoDMS by <a href=\"https://objectvision.nl\">Object Vision BV</a>. Distributed under <a href=\"https://github.com/ObjectVision/GeoDMS/blob/v14/license.txt\">GNU GPL-2 license.</a>"
-gh_edit_link: true # show or hide edit this page link
-gh_edit_link_text: "Edit this page on GitHub."
-gh_edit_repository: "https://github.com/ObjectVision/GeoDMS/wiki/" # the github URL for your repo
-gh_edit_branch: "" # the branch that your docs is served from
-gh_edit_source: "" # the source that your files originate from
-gh_edit_view_mode: "" # "tree" or "edit" if you want the user to jump into the editor immediately
+#gh_edit_link: true # show or hide edit this page link
+#gh_edit_link_text: "Edit this page on GitHub."
+#gh_edit_repository: "https://github.com/ObjectVision/GeoDMS/wiki/" # the github URL for your repo
+#gh_edit_branch: "" # the branch that your docs is served from
+#gh_edit_source: "" # the source that your files originate from
+#gh_edit_view_mode: "" # "tree" or "edit" if you want the user to jump into the editor immediately
 
 
 aux_links:
