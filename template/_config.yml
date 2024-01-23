@@ -3,7 +3,7 @@ description: GeoDms documentation
 theme: just-the-docs
 kramdown:
   input: GFM
-url: https://just-the-docs.github.io
+#url: https://just-the-docs.github.io
 math: mathjax
 color_scheme: wider
 back_to_top: true
