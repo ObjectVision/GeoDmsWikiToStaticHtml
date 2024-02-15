@@ -145,7 +145,7 @@ def clean_html_files(html_folder:str):
     for html_file in html_files:
         clean_html_file(html_file)
 
-def clean_html_file(html_fn_raw:str, set_nav_tabs_open:bool=True, convert_paths_for_local_use:bool=False):
+def clean_html_file(html_fn_raw:str, set_nav_tabs_open:bool=True, convert_paths_for_local_use:bool=False, remove_jekyll_header_part=True):
     text = ""
     with open(html_fn_raw, "r", encoding="utf-8") as fn:
         text = fn.read()
@@ -167,6 +167,13 @@ def clean_html_file(html_fn_raw:str, set_nav_tabs_open:bool=True, convert_paths_
         text = text.replace('<li class="nav-list-item">', '<li class="nav-list-item active">')
         text = text.replace('aria-pressed="false"', 'aria-pressed="true"')
         text = text.replace('/favicon.ico', f'{prefix}favicon.ico')
+
+    if remove_jekyll_header_part:
+        jekyll_header_start = text.find("<!-- Begin Jekyll SEO tag v2.8.0 -->")
+        jekyll_header_end = text.find("<!-- End Jekyll SEO tag -->")
+        
+        if not jekyll_header_start == -1 and not jekyll_header_end == -1:
+            text = text[0:jekyll_header_start] + text[jekyll_header_end+28:]
 
     with open(html_fn_raw, "w", encoding="utf-8") as fn:
         fn.write(text)
@@ -414,4 +421,5 @@ def convert_wiki_to_static_html(serve_locally:bool = False):
     return
 
 if __name__=="__main__":
-    convert_wiki_to_static_html()
+    serve_locally = True
+    convert_wiki_to_static_html(serve_locally)
