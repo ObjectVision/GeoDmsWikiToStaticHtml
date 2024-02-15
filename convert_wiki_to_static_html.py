@@ -324,7 +324,7 @@ def generate_sitemap(output_fn):
             fn.write(f"{page}\n")
     return
 
-def convert_wiki_to_static_html():
+def convert_wiki_to_static_html(serve_locally:bool = False):
     # params
     wiki_git_url = "https://github.com/ObjectVision/GeoDMS.wiki.git"
     wiki_dir = "wiki"
@@ -378,9 +378,9 @@ def convert_wiki_to_static_html():
 
         if "_Sidebar" in file:
             navigation_structure = get_navigation_structure_from_sidebar(file)
-            print()
-            print(navigation_structure)
-            print()
+            #print()
+            #print(navigation_structure)
+            #print()
             continue
 
         if "_Footer" in file:
@@ -403,9 +403,10 @@ def convert_wiki_to_static_html():
     generate_sitemap("_site/sitemap.txt")
     #merge_json_into_just_the_docs_js()
 
-    # serve using jekyll
-    os.chdir("_site")
-    os.system("python -m http.server 8000")
+
+    if (serve_locally):
+        os.chdir("_site")
+        os.system("python -m http.server 8000")
     
     #os.system("bundle exec jekyll serve")
     os.chdir(current_run_dir)
