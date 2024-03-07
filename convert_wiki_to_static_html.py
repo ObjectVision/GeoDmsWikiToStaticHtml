@@ -7,6 +7,7 @@ import pathlib
 def make_key_from_md_filename(filename):
     base_filename =os.path.splitext(os.path.basename(filename))[0]
     key_filename = os.path.splitext(os.path.basename(filename).replace(" ", "-"))[0].lower()
+    key_filename = key_filename.replace("...", "-")
     dir_name = os.path.dirname(filename)
     dir_name = dir_name.replace("_site\\\\", "")
     dir_name = dir_name.replace("\\", "/")
@@ -21,7 +22,7 @@ def get_filename_key_from_md_link(md_link:str, link_open:str="[[", link_close:st
 
     split_md_link = new_md_link.split("|")
     link_alias = ""
-    if len(split_md_link) > 2:
+    if len(split_md_link) > 1:
         link_alias = split_md_link[0]
 
     final_link = split_md_link[-1]
