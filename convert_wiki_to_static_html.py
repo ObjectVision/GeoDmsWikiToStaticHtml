@@ -26,15 +26,13 @@ def get_filename_key_from_md_link(md_link:str, link_open:str="[[", link_close:st
         link_alias = split_md_link[0]
 
     final_link = split_md_link[-1]
-    #final_link = final_link.split("/")
-    #if len(final_link) > 2 and "images" in final_link[0]:
-    #    final_link = '/'.join(final_link)
-    #else: 
-    #    final_link = final_link[-1]
 
     key_raw = final_link
     key = final_link.replace(" ", "-")
     
+    if link_alias and link_alias[-1] == "\\":
+        link_alias = link_alias[0:-1]
+
     return link_alias, key_raw, key.lower()
 
 def find_all_internal_markdown_links(text:str):
@@ -339,7 +337,7 @@ def convert_wiki_to_static_html(serve_locally:bool = False):
     just_the_docs_template_dir = "template"
     navigation_md_file = "_Sidebar.md"
 
-    reclone_wiki = True
+    reclone_wiki = False
     if reclone_wiki:
         # remove old wiki dir
         if os.path.isdir(wiki_dir):
