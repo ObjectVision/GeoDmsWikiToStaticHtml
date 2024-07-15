@@ -323,7 +323,7 @@ def generate_sitemap(output_fn):
     html_pages = []
     for f in site_html_files:
         base_name, name, dir_name= make_key_from_md_filename(f)
-        html_pages.append(f"https://www.geodms.nl{dir_name}/{base_name}.html")
+        html_pages.append(f"https://geodms.nl{dir_name}/{base_name}.html")
 
     with open(output_fn, "w") as fn:
         for page in html_pages:
@@ -337,7 +337,7 @@ def convert_wiki_to_static_html(serve_locally:bool = False):
     just_the_docs_template_dir = "template"
     navigation_md_file = "_Sidebar.md"
 
-    reclone_wiki = False
+    reclone_wiki = True
     if reclone_wiki:
         # remove old wiki dir
         if os.path.isdir(wiki_dir):
