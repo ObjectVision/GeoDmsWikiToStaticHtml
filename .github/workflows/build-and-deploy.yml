@@ -1,0 +1,79 @@
+# Builds the static site from the GeoDMS wiki and deploys it to geodms.nl over FTPS.
+#
+# Triggers:
+# - manual (Actions tab -> "Build and deploy geodms.nl" -> Run workflow), with an
+#   optional dry-run that uploads the site as an artifact instead of deploying
+# - nightly schedule
+# - repository_dispatch event "wiki-updated", sent by the ObjectVision/GeoDMS repo
+#   when a wiki page changes (see extra/wiki-updated-trigger-for-GeoDMS-repo.yml)
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   FTP_SERVER    hostname of the webserver, e.g. ftp.example.nl
+#   FTP_USERNAME  ftp account name
+#   FTP_PASSWORD  ftp account password
+# Optional repository variable:
+#   FTP_SERVER_DIR  remote directory to deploy into, default "public_html/"
+#
+# The runner is windows-latest because template/Gemfile.lock is pinned to the
+# x64-mingw-ucrt platform. To move to ubuntu, first run
+# `bundle lock --add-platform x86_64-linux` in template/ and commit the lockfile.
+
+name: Build and deploy geodms.nl
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build only: upload the site as an artifact, do not deploy"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "17 3 * * *" # nightly, 03:17 UTC
+  repository_dispatch:
+    types: [wiki-updated]
+
+permissions:
+  contents: read
+
+# never run two deploys at the same time; queue instead
+concurrency:
+  group: build-and-deploy
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          working-directory: template
+          bundler-cache: true # bundle install + cache, driven by template/Gemfile.lock
+
+      - name: Convert wiki to static html
+        run: python convert_wiki_to_static_html.py
+
+      - name: Upload site as artifact (dry run)
+        if: inputs.dry_run
+        uses: actions/upload-artifact@v4
+        with:
+          name: geodms.nl-site
+          path: template/_site/
+
+      - name: Deploy to geodms.nl
+        if: ${{ !inputs.dry_run }}
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: template/_site/
+          server-dir: ${{ vars.FTP_SERVER_DIR || 'public_html/' }}

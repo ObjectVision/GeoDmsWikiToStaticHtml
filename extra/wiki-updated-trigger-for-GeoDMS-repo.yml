@@ -1,0 +1,31 @@
+# OPTIONAL: install this file in the ObjectVision/GeoDMS repository as
+# .github/workflows/wiki-updated-trigger.yml to rebuild geodms.nl immediately
+# after every wiki edit (the gollum event only fires in the repo that owns the wiki).
+#
+# Setup:
+# 1. Create a fine-grained personal access token that may write to
+#    ObjectVision/GeoDmsWikiToStaticHtml (repository permission Contents:
+#    read and write - that is what repository_dispatch requires).
+# 2. Store it in ObjectVision/GeoDMS as an Actions secret named
+#    WIKI_SITE_DISPATCH_TOKEN.
+#
+# Without this trigger the site still refreshes nightly via the schedule in
+# GeoDmsWikiToStaticHtml/.github/workflows/build-and-deploy.yml.
+
+name: Trigger geodms.nl rebuild on wiki change
+
+on: gollum
+
+permissions: {}
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send wiki-updated to GeoDmsWikiToStaticHtml
+        run: |
+          curl -sS --fail-with-body -X POST \
+            -H "Authorization: Bearer ${{ secrets.WIKI_SITE_DISPATCH_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/ObjectVision/GeoDmsWikiToStaticHtml/dispatches \
+            -d '{"event_type":"wiki-updated"}'
