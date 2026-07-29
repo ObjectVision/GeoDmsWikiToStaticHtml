@@ -7,6 +7,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import urllib.parse
 
 # wiki page names may contain characters outside the console codepage (e.g. u+2010
 # in RSopen); never let a diagnostic print kill the build over that
@@ -38,6 +39,61 @@ SITES = {
 
 OUT_ROOT = "_out"
 TEMPLATE_DIR = "template"
+
+# github repo name -> site name, e.g. "RSopen" -> "rsopen", derived from the wiki urls
+REPO_TO_SITE = {}
+for _site_name, _site in SITES.items():
+    _repo = _site["wiki_git_url"].rsplit("/", 1)[-1]
+    if _repo.endswith(".wiki.git"):
+        _repo = _repo[:-len(".wiki.git")]
+    REPO_TO_SITE[_repo] = _site_name
+
+CROSS_WIKI_LINK_RE = re.compile(
+    r"https://github\.com/ObjectVision/("
+    + "|".join(re.escape(r) for r in REPO_TO_SITE)
+    + r")/wiki(?:/([^)\s\]]*))?"
+)
+
+def rewrite_cross_wiki_links(text:str, file_dicts_by_site:dict) -> str:
+    # links to the github wiki of any site in SITES become links inside geodms.nl,
+    # so the wikis can reference each other (and themselves) by their github url
+    def replace(match):
+        site_name = REPO_TO_SITE[match.group(1)]
+        baseurl = SITES[site_name]["baseurl"]
+        page = urllib.parse.unquote(match.group(2) or "").strip("/")
+        if not page:
+            return f"{SITE_URL}{baseurl}/"
+        page_part, _, anchor_part = page.partition("#")
+        anchor = f"#{anchor_part}" if anchor_part else ""
+        key = page_part.replace(" ", "-").lower().replace("...", "-")
+        if key == "home":
+            return f"{SITE_URL}{baseurl}/{anchor}"
+        if key not in file_dicts_by_site[site_name]:
+            return match.group(0)  # page unknown in that wiki: keep the github link
+        return f"{SITE_URL}{baseurl}/docs/{key}.html{anchor}"
+    return CROSS_WIKI_LINK_RE.sub(replace, text)
+
+def is_table_delimiter_row(line:str) -> bool:
+    stripped = line.strip()
+    return bool(stripped) and set(stripped) <= set("|-: ") and "-" in stripped and "|" in stripped
+
+def insert_blank_line_before_tables(text:str) -> str:
+    # github renders a table that directly follows a paragraph, kramdown needs a
+    # blank line in between (otherwise the table collapses into the paragraph)
+    lines = text.split("\n")
+    out = []
+    in_code_fence = False
+    for i, line in enumerate(lines):
+        stripped = line.lstrip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            in_code_fence = not in_code_fence
+        if (not in_code_fence and i + 1 < len(lines)
+                and "|" in line and not is_table_delimiter_row(line)
+                and is_table_delimiter_row(lines[i + 1])
+                and out and out[-1].strip() and "|" not in out[-1]):
+            out.append("")
+        out.append(line)
+    return "\n".join(out)
 
 def rmtree_force(path):
     # git clones contain read-only files that a plain rmtree cannot delete on Windows
@@ -121,7 +177,7 @@ def generate_md_header(base_name:str, name:str, parent, level:int, has_children:
 
     return header
 
-def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navigation_structure, baseurl=""):
+def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navigation_structure, baseurl="", all_file_dicts=None):
     base_name, name, dir_name = make_key_from_md_filename(md_fn_raw)
     display_name = base_name.replace("-", " ")
     is_in_navigation = name in navigation_structure
@@ -134,9 +190,12 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
         names_with_big_tables_and_sup = {"value-type":True, "null":True}
 
         text = fn.read()
-        links = find_all_internal_markdown_links(text)
 
-        cleaned_text = f"{text}"
+        cleaned_text = insert_blank_line_before_tables(text)
+        if all_file_dicts:
+            cleaned_text = rewrite_cross_wiki_links(cleaned_text, all_file_dicts)
+
+        links = find_all_internal_markdown_links(cleaned_text)
 
         if (name in names_with_big_tables_and_sup):
             cleaned_text = cleaned_text.replace("<sup>", "")
@@ -296,31 +355,20 @@ def generate_sitemap(output_fn):
             fn.write(f"{SITE_URL}/{rel_page}\n")
     return
 
-def build_site(site_name:str, run_jekyll:bool=True, reclone_wiki:bool=True):
-    site = SITES[site_name]
-    baseurl = site["baseurl"]
+def ensure_wiki(site_name:str, reclone_wiki:bool=True):
     wiki_dir = f"wikis/{site_name}"
-
     if reclone_wiki:
         rmtree_force(wiki_dir)
     if not os.path.isdir(wiki_dir):
         os.makedirs("wikis", exist_ok=True)
-        subprocess.run(["git", "clone", "--depth", "1", site["wiki_git_url"], wiki_dir], check=True)
+        subprocess.run(["git", "clone", "--depth", "1", SITES[site_name]["wiki_git_url"], wiki_dir], check=True)
 
-    # reset the generated template inputs of the previous site
-    docs_folder = f"{TEMPLATE_DIR}/docs"
-    rmtree_force(docs_folder)
-    rmtree_force(f"{TEMPLATE_DIR}/assets/img")
-    if os.path.isfile(f"{TEMPLATE_DIR}/index.md"):
-        os.remove(f"{TEMPLATE_DIR}/index.md")
-    os.mkdir(docs_folder)
+def collect_site_dicts(site_name:str):
+    # returns (wiki_md_files, wiki_file_dict, wiki_image_dict, navigation_structure)
+    wiki_dir = f"wikis/{site_name}"
 
-    # copy wiki images (if any) to /assets/img folder, all lowercase
     wiki_image_dict = {}
     if os.path.isdir(f"{wiki_dir}/images"):
-        shutil.copytree(f"{wiki_dir}/images", f"{TEMPLATE_DIR}/assets/img")
-        lowercase_tree(f"{TEMPLATE_DIR}/assets/img")
-
         wiki_image_files = glob.glob(f"{wiki_dir}/images/**", recursive=True)
         for file in wiki_image_files:
             base_name, name, dir_name = make_key_from_md_filename(file)
@@ -332,7 +380,6 @@ def build_site(site_name:str, run_jekyll:bool=True, reclone_wiki:bool=True):
 
             wiki_image_dict[name.lower()] = file
 
-    # create wiki file dict
     wiki_file_dict = {}
     navigation_structure = {}
     wiki_md_files = glob.glob(f"{wiki_dir}/**/*.md", recursive=True)
@@ -347,9 +394,31 @@ def build_site(site_name:str, run_jekyll:bool=True, reclone_wiki:bool=True):
         if "_Footer" in file:
             continue
 
+    return (wiki_md_files, wiki_file_dict, wiki_image_dict, navigation_structure)
+
+def build_site(site_name:str, dicts_by_site:dict, run_jekyll:bool=True):
+    site = SITES[site_name]
+    baseurl = site["baseurl"]
+    wiki_dir = f"wikis/{site_name}"
+    wiki_md_files, wiki_file_dict, wiki_image_dict, navigation_structure = dicts_by_site[site_name]
+    all_file_dicts = {name: dicts[1] for name, dicts in dicts_by_site.items()}
+
+    # reset the generated template inputs of the previous site
+    docs_folder = f"{TEMPLATE_DIR}/docs"
+    rmtree_force(docs_folder)
+    rmtree_force(f"{TEMPLATE_DIR}/assets/img")
+    if os.path.isfile(f"{TEMPLATE_DIR}/index.md"):
+        os.remove(f"{TEMPLATE_DIR}/index.md")
+    os.mkdir(docs_folder)
+
+    # copy wiki images (if any) to /assets/img folder, all lowercase
+    if os.path.isdir(f"{wiki_dir}/images"):
+        shutil.copytree(f"{wiki_dir}/images", f"{TEMPLATE_DIR}/assets/img")
+        lowercase_tree(f"{TEMPLATE_DIR}/assets/img")
+
     # convert links in each file
     for file in wiki_md_files:
-        cleaned_md_filename = clean_md_file(file, f"{TEMPLATE_DIR}/docs", wiki_file_dict, wiki_image_dict, navigation_structure, baseurl)
+        cleaned_md_filename = clean_md_file(file, f"{TEMPLATE_DIR}/docs", wiki_file_dict, wiki_image_dict, navigation_structure, baseurl, all_file_dicts)
         if "home" in cleaned_md_filename:
             shutil.move(cleaned_md_filename, f"{TEMPLATE_DIR}/index.md")
 
@@ -385,10 +454,16 @@ if __name__=="__main__":
     if run_jekyll and set(selected) == set(SITES):
         rmtree_force(OUT_ROOT)  # full build starts clean; partial builds only touch their own subdir
 
+    # all wikis are cloned and indexed, also outside --sites: rewriting the
+    # cross-wiki links of any site needs the page lists of all of them
+    for site_name in SITES:
+        ensure_wiki(site_name, reclone_wiki=not args.skip_clone)
+    dicts_by_site = {site_name: collect_site_dicts(site_name) for site_name in SITES}
+
     # the root site must build first: jekyll cleans its destination (_out itself),
     # keep_files in _config.yml protects the subsite dirs on partial rebuilds
     for site_name in [s for s in SITES if s in selected]:
-        build_site(site_name, run_jekyll=run_jekyll, reclone_wiki=not args.skip_clone)
+        build_site(site_name, dicts_by_site, run_jekyll=run_jekyll)
 
     if run_jekyll:
         generate_sitemap(f"{OUT_ROOT}/sitemap.txt")

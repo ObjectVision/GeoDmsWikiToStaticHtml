@@ -14,6 +14,8 @@ One run builds all wikis into a single `_out/` tree that is deployed as one whol
 
 The main site links to the subsites in its navigation bar; each subsite links back. `_out/sitemap.txt` covers all sites (the server's `robots.txt` points to it).
 
+The wikis can link to each other (and to themselves) with their normal github wiki urls, e.g. `https://github.com/ObjectVision/RSopen/wiki/Beschikbaarheid`: the converter rewrites those to the corresponding internal geodms.nl location, including `#section` anchors. Links to pages that do not exist in the target wiki are kept as github links.
+
 **Adding a wiki:** the wiki needs a `Home.md` and a `_Sidebar.md`. Then:
 1. add an entry to `SITES` in `convert_wiki_to_static_html.py` (name, wiki git url, baseurl);
 2. create `template/_config_<name>.yml` with its `title`, `baseurl` and links (copy an existing overlay);
@@ -60,6 +62,7 @@ To upload a locally built site to the webserver, store a WinSCP site with the ft
 ```
 
 # Notes
+- Github renders a markdown table that directly follows a paragraph, kramdown/Jekyll does not; the converter inserts the missing blank line so such tables render correctly here too.
 - The Jekyll SEO header (canonical url, meta description) is kept in the generated pages since the whole point of this site is being indexable. `clean_html_file(..., remove_jekyll_header_part=True)` can strip it again for local file-based use.
 - `template/Gemfile.lock` is pinned to the Windows platform (`x64-mingw-ucrt`); the CI workflow therefore uses a windows runner. To build on Linux, run `bundle lock --add-platform x86_64-linux` in `template/` and commit the lockfile.
 - Documentation content is distributed under CC BY-SA 4.0; this tool under GNU GPL-3.
