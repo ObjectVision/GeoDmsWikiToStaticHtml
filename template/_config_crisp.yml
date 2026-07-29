@@ -1,0 +1,14 @@
+# overlay on _config.yml for the CRISP subsite (jekyll --config _config.yml,_config_crisp.yml)
+title: CRISP
+description: Documentation of the CRISP model (Cities and Rural Integrated Spatial Projections)
+baseurl: "/crisp"
+keep_files: [".git"]
+
+aux_links:
+  CRISP on Github: https://github.com/ObjectVision/CRISP
+
+nav_external_links:
+  - title: GeoDMS documentation
+    url: https://www.geodms.nl
+    hide_icon: false
+    opens_in_new_tab: false

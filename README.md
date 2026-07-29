@@ -11,6 +11,7 @@ One run builds all wikis into a single `_out/` tree that is deployed as one whol
 | GeoDMS | https://github.com/ObjectVision/GeoDMS/wiki | https://www.geodms.nl/ |
 | RSopen | https://github.com/ObjectVision/RSopen/wiki | https://www.geodms.nl/rsopen/ |
 | NetworkModel PBL | https://github.com/ObjectVision/NetworkModel_PBL/wiki | https://www.geodms.nl/networkmodel_pbl/ |
+| CRISP | https://github.com/ObjectVision/CRISP/wiki | https://www.geodms.nl/crisp/ |
 
 The main site links to the subsites in its navigation bar; each subsite links back. `_out/sitemap.txt` covers all sites (the server's `robots.txt` points to it).
 

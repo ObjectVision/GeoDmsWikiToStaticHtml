@@ -36,7 +36,11 @@ nav_external_links:
     url: https://www.geodms.nl/networkmodel_pbl/
     hide_icon: false
     opens_in_new_tab: false
+  - title: CRISP
+    url: https://www.geodms.nl/crisp/
+    hide_icon: false
+    opens_in_new_tab: false
 
 # the root site builds into _out/ where the subsites live in subdirectories;
 # keep_files stops jekyll from deleting them when it cleans its destination
-keep_files: [".git", "rsopen", "networkmodel_pbl"]
+keep_files: [".git", "rsopen", "networkmodel_pbl", "crisp"]

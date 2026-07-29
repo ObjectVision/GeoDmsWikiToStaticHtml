@@ -35,6 +35,10 @@ SITES = {
         "wiki_git_url": "https://github.com/ObjectVision/NetworkModel_PBL.wiki.git",
         "baseurl": "/networkmodel_pbl",
     },
+    "crisp": {
+        "wiki_git_url": "https://github.com/ObjectVision/CRISP.wiki.git",
+        "baseurl": "/crisp",
+    },
 }
 
 OUT_ROOT = "_out"
