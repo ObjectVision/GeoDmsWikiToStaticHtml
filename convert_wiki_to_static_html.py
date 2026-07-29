@@ -1,15 +1,40 @@
-import os
+import argparse
 import glob
-import shutil
-import re
+import os
 import pathlib
+import re
+import shutil
+import stat
+import subprocess
+import sys
+
+DEFAULT_WIKI_GIT_URL = "https://github.com/ObjectVision/GeoDMS.wiki.git"
+
+def rmtree_force(path):
+    # git clones contain read-only files that a plain rmtree cannot delete on Windows
+    def make_writable(func, p, exc_info):
+        os.chmod(p, stat.S_IWRITE)
+        func(p)
+    if not os.path.isdir(path):
+        return
+    try:
+        shutil.rmtree(path, onexc=lambda func, p, exc: make_writable(func, p, exc))
+    except TypeError:  # Python < 3.12 has onerror instead of onexc
+        shutil.rmtree(path, onerror=make_writable)
+
+def lowercase_tree(root):
+    # rename all files and directories below root to lowercase, deepest first
+    for dir_path, dir_names, file_names in os.walk(root, topdown=False):
+        for name in file_names + dir_names:
+            lower_name = name.lower()
+            if name != lower_name:
+                os.rename(os.path.join(dir_path, name), os.path.join(dir_path, lower_name))
 
 def make_key_from_md_filename(filename):
     base_filename =os.path.splitext(os.path.basename(filename))[0]
     key_filename = os.path.splitext(os.path.basename(filename).replace(" ", "-"))[0].lower()
     key_filename = key_filename.replace("...", "-")
     dir_name = os.path.dirname(filename)
-    dir_name = dir_name.replace("_site\\\\", "")
     dir_name = dir_name.replace("\\", "/")
     dir_name = dir_name.replace("_site", "")
     return (base_filename, key_filename, dir_name)
@@ -29,11 +54,12 @@ def get_filename_key_from_md_link(md_link:str, link_open:str="[[", link_close:st
 
     key_raw = final_link
     key = final_link.replace(" ", "-")
-    
+    key = key.lower().replace("...", "-")  # same munging as make_key_from_md_filename
+
     if link_alias and link_alias[-1] == "\\":
         link_alias = link_alias[0:-1]
 
-    return link_alias, key_raw, key.lower()
+    return link_alias, key_raw, key
 
 def find_all_internal_markdown_links(text:str):
     return re.findall(r"\[\[[^\[\]\v]+\]\]",text)
@@ -43,15 +69,10 @@ def find_all_external_markdown_links(text:str):
 
 def generate_md_header(base_name:str, name:str, parent, level:int, has_children:bool, is_in_navigation:bool):
     display_name = base_name.replace("-", " ")
-    
+
     header  = "---\n"
     header += f"title: {display_name}\n"
     header += f"layout: default\n"
-
-    #if "home" in name:
-    #    header += f"permalink: /\n"
-    #else:
-    #    header += f"permalink: {name}/\n"
 
     if has_children:
         header += "has_children: true\n"
@@ -69,18 +90,11 @@ def generate_md_header(base_name:str, name:str, parent, level:int, has_children:
 
     header += "---\n"
 
-    #---
-    #title: GeoDMS
-    #layout: home
-    #---
-
     return header
 
 def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navigation_structure):
     base_name, name, dir_name = make_key_from_md_filename(md_fn_raw)
     display_name = base_name.replace("-", " ")
-    if (name=="software"):
-        i = 0
     is_in_navigation = name in navigation_structure
     parent, level, has_children = ["", 0, False]
     if (is_in_navigation):
@@ -89,7 +103,7 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
     header = generate_md_header(base_name, name, parent, level, has_children, is_in_navigation)
     with open(md_fn_raw, "r", encoding="utf-8") as fn:
         names_with_big_tables_and_sup = {"value-type":True, "null":True}
-        
+
         text = fn.read()
         links = find_all_internal_markdown_links(text)
 
@@ -98,10 +112,10 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
         if (name in names_with_big_tables_and_sup):
             cleaned_text = cleaned_text.replace("<sup>", "")
             cleaned_text = cleaned_text.replace("</sup>", "")
-        
+
         for link in links:
             link_alias, key_raw, key = get_filename_key_from_md_link(link)
-            key_is_in_files = key in wiki_file_dict 
+            key_is_in_files = key in wiki_file_dict
             key_is_in_images = key in wiki_image_dict
 
             if key_is_in_files:
@@ -115,21 +129,12 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
                 # [[images/GUI/qt.png]] -> ![qt](assets/img/GUI/qt.png)
                 filename, ext = os.path.splitext(key)
                 image_name = pathlib.Path(filename).stem + ext
-                mid_path = ""
-                if "/GUI/" in filename: # TODO: generalize this
-                    mid_path = "/gui"
 
-                if "/GUI/tools" in filename:
-                    mid_path = "/gui/tools"
-                
                 mid_path = key.replace("images/", "")
                 mid_path = mid_path.replace(image_name, "")
 
-                #if "home" in name:
                 cleaned_text = cleaned_text.replace(link, f"![{link_alias}](/assets/img/{mid_path}{image_name})")
-                #else:
-                #    cleaned_text = cleaned_text.replace(link, f"![{link_alias}](../assets/img/{mid_path}{image_name})")
-            else: 
+            else:
                 print(f"{link} {key} {md_fn_raw} is not in dict")
     cleaned_text = f"{header}# **{display_name}**\n{cleaned_text}"
     output_filename = f"{md_fldr_out}/{name}.md"
@@ -153,7 +158,7 @@ def clean_html_file(html_fn_raw:str, set_nav_tabs_open:bool=True, convert_paths_
     is_index_page = "index" in html_fn_raw
     if is_index_page:
         prefix = ""
-    
+
     if (convert_paths_for_local_use):
         text = text.replace('<a href="/"', f'<a href="{prefix}index.html"')
         text = text.replace("/assets", f"{prefix}assets")
@@ -170,95 +175,12 @@ def clean_html_file(html_fn_raw:str, set_nav_tabs_open:bool=True, convert_paths_
     if remove_jekyll_header_part:
         jekyll_header_start = text.find("<!-- Begin Jekyll SEO tag v2.8.0 -->")
         jekyll_header_end = text.find("<!-- End Jekyll SEO tag -->")
-        
+
         if not jekyll_header_start == -1 and not jekyll_header_end == -1:
             text = text[0:jekyll_header_start] + text[jekyll_header_end+28:]
 
     with open(html_fn_raw, "w", encoding="utf-8") as fn:
         fn.write(text)
-
-def format_json_search_file_content(json_fn:str):
-    
-    #{"0": {
-    #"doc": "(registry)-settings",
-    #"title": "registry path",
-    #"content": "The path for most of the settings in the registry is: . Computer\\HKEY_CURRENT_USER\\Software\\ObjectVision\\%ComputerName%\\GeoDMS. This means the settings are user and machine specific. Only the set of recent files is located in: . Computer\\HKEY_CURRENT_USER\\Software\\ObjectVision\\DMS\\RecentFiles . In earlier versions settings were also stored in Computer\\HKEY_CURRENT_USER\\Software\\ObjectVision\\DMS. You might find some settings here, but new GeoDMS versions do not use these anymore. ",
-    #"url": "/docs/(registry)-settings.html#registry-path",
-    
-    lines = []
-    text = ""
-    with open(json_fn, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-    
-    for line in lines:
-        split_line = line.split(":")
-        if len(split_line) == 1:
-            continue
-
-        first_part = ""
-        second_part = ""
-
-        if len(split_line) > 0:
-            first_part = f"{split_line[0]}:"
-        if len(split_line) > 1:
-            is_first = True
-            for part in split_line[1:]:
-                if is_first:
-                    is_first = False
-                    if part[0] == " ":
-                        part = part[1:]
-                second_part = f"{second_part}{part}"
-            second_part = second_part.replace("\"", "")
-            second_part = second_part.replace("'", "")
-            second_part = second_part.replace("\n", "")
-            second_part = second_part.replace(",", "")
-            second_part = second_part.replace(":", "")
-
-        second_postfix = ","
-        quotes = "\""
-        if second_part and second_part[-1] == "{":
-            second_postfix = ""
-            quotes = ""
-
-        if "relUrl" in first_part:
-            second_postfix = ""
-
-        line = f"{first_part}{quotes}{second_part}{quotes}{second_postfix}"
-        line = line.replace(":,", "")
-        line = line.replace("\n", "")
-        line = line.replace("'", "")
-        line = line.replace("\"\"", "")
-        line = line.replace("\\""", "")
-        line = line.replace("\\", "/")
-        line = line.replace(";", "")
-        text = f"{text} {line}"
-    return text + "}}"
-
-def merge_json_into_just_the_docs_js(follow_the_docs_js_original_fn:str="_site/assets/js/just-the-docs.js"):
-    search_data_formatted_line = format_json_search_file_content("_site/assets/js/search-data.json")
-
-    js_script = ""
-    with open(follow_the_docs_js_original_fn, "r", encoding="utf-8") as f:
-        js_script = f.read()
-
-    #var path = window.location.pathname;
-    #var html_page_name = path.split("/").pop();
-    #if (html_page_name.includes('index')) {
-    #    search_data = search_data.replace(/\/docs/g, "docs");
-    #}
-    #else {
-    #    search_data = search_data.replace(/\/docs/g, "../docs");
-    #}
-
-    replace_text = "var request = new XMLHttpRequest();\n  request.open('GET', '/assets/js/search-data.json', true);\n\n  request.onload = function(){\n    if (request.status >= 200 && request.status < 400) {\n      var docs = JSON.parse(request.responseText);\n"    
-    js_script = js_script.replace(replace_text, f"let search_data = '{search_data_formatted_line}';\n  var path = window.location.pathname;\n  var html_page_name = path.split(\"/\").pop();\n  if (html_page_name.includes('index')) {{\n    search_data = search_data.replace(/\/docs/g, \"docs\");\n  }}\n  else {{\n   search_data = search_data.replace(/\\/docs/g, \"../docs\");\n}}\n var docs = JSON.parse(search_data);")
-    
-    replace_text = "    } else {\n      console.log('Error loading ajax request. Request status:' + request.status);\n    }\n  };\n\n  request.onerror = function(){\n    console.log('There was a connection error');\n  };\n\n  request.send();"
-    js_script = js_script.replace(replace_text, "")
-    
-    #js_script = js_script.replace("    } else {\n      console.log('Error loading ajax request. Request status:' + request.status);\n    }\n  };", )
-    with open(follow_the_docs_js_original_fn, "w", encoding="utf-8") as f:
-        f.write(js_script)
 
 def get_number_of_leading_spaces(line:str) -> int:
     number_of_spaces = 0
@@ -273,7 +195,7 @@ def get_navigation_structure_from_sidebar(sidebar_fn:str):
     previous_level = -1
     previous_parent = None
     parent_stack = []
-    with open(sidebar_fn) as f:
+    with open(sidebar_fn, encoding="utf-8") as f:
         lines = f.readlines()
         for level, line in enumerate(lines):
             level+=1
@@ -296,12 +218,12 @@ def get_navigation_structure_from_sidebar(sidebar_fn:str):
                 link_alias, raw_key, key = get_filename_key_from_md_link(external_links[0], "[", "]")
 
             parent = None
-            if len(parent_stack): 
+            if len(parent_stack):
                 parent = parent_stack[-1][0]
 
             if leading_spaces < previous_level: # next parent
                 parent = parent_stack.pop()[0]
-                if not len(parent_stack): 
+                if not len(parent_stack):
                     parent = None
 
             if leading_spaces > previous_level:
@@ -325,43 +247,33 @@ def generate_sitemap(output_fn):
         base_name, name, dir_name= make_key_from_md_filename(f)
         html_pages.append(f"https://geodms.nl{dir_name}/{base_name}.html")
 
-    with open(output_fn, "w") as fn:
+    with open(output_fn, "w", encoding="utf-8") as fn:
         for page in html_pages:
             fn.write(f"{page}\n")
     return
 
-def convert_wiki_to_static_html(serve_locally:bool = False):
+def convert_wiki_to_static_html(serve_locally:bool=False, wiki_git_url:str=DEFAULT_WIKI_GIT_URL, reclone_wiki:bool=True, run_jekyll:bool=True):
     # params
-    wiki_git_url = "https://github.com/ObjectVision/GeoDMS.wiki.git"
     wiki_dir = "wiki"
     just_the_docs_template_dir = "template"
-    navigation_md_file = "_Sidebar.md"
 
-    reclone_wiki = True
     if reclone_wiki:
-        # remove old wiki dir
-        if os.path.isdir(wiki_dir):
-            os.system(f"rmdir {wiki_dir} /s /q")
-        # clone wiki
-        os.system(f"git clone {wiki_git_url} {wiki_dir}")
+        rmtree_force(wiki_dir)
+        subprocess.run(["git", "clone", "--depth", "1", wiki_git_url, wiki_dir], check=True)
+    elif not os.path.isdir(wiki_dir):
+        sys.exit(f"wiki dir '{wiki_dir}' not found; run without --skip-clone first")
 
     # remove old cleaned wiki dir
-    docs_folder = f"{just_the_docs_template_dir}\\docs"
-    if os.path.isdir(docs_folder):
-        os.system(f"rmdir {docs_folder} /s /q")
+    docs_folder = os.path.join(just_the_docs_template_dir, "docs")
+    rmtree_force(docs_folder)
+    rmtree_force(os.path.join(just_the_docs_template_dir, "assets", "img"))
 
-    if os.path.isdir(f"{just_the_docs_template_dir}\\assets\\img"):
-        os.system(f"rmdir {just_the_docs_template_dir}\\assets\\img /s /q")
-    
     # output
-    os.mkdir(f"{just_the_docs_template_dir}/docs")
+    os.mkdir(docs_folder)
 
-    # copy wiki images to /assets/img folder
+    # copy wiki images to /assets/img folder, all lowercase
     shutil.copytree(f"{wiki_dir}/images", f"{just_the_docs_template_dir}/assets/img")
-
-    # make all items lower case
-    os.system(f"for /r \"{just_the_docs_template_dir}/assets/img\" %D in (.) do @for /f \"eol=: delims=\" %F in ('dir /l/b/ad \"%D\"') do @ren \"%D\%F\" \"%F\"")
-    os.system(f"for /r \"{just_the_docs_template_dir}/assets/img\" %D in (.) do @for /f \"eol=: delims=\" %F in ('dir /l/b/a-d \"%D\"') do @ren \"%D\%F\" \"%F\"")
+    lowercase_tree(f"{just_the_docs_template_dir}/assets/img")
 
     wiki_image_dict = {}
     wiki_image_files =  glob.glob(f"{wiki_dir}/images/**", recursive=True)
@@ -370,13 +282,14 @@ def convert_wiki_to_static_html(serve_locally:bool = False):
         if not name:
             continue
 
-        name = file.replace("wiki/images\\", "")
-        name = "images/" + name.replace("\\", "/")
-        
+        name = file.replace("\\", "/").replace(f"{wiki_dir}/images/", "")
+        name = "images/" + name
+
         wiki_image_dict[name.lower()] = file
 
     # create wiki file dict
     wiki_file_dict = {}
+    navigation_structure = {}
     wiki_md_files = glob.glob(f"{wiki_dir}/**/*.md", recursive=True)
     for file in wiki_md_files:
         base_name, name, dir_name = make_key_from_md_filename(file)
@@ -384,9 +297,6 @@ def convert_wiki_to_static_html(serve_locally:bool = False):
 
         if "_Sidebar" in file:
             navigation_structure = get_navigation_structure_from_sidebar(file)
-            #print()
-            #print(navigation_structure)
-            #print()
             continue
 
         if "_Footer" in file:
@@ -402,23 +312,35 @@ def convert_wiki_to_static_html(serve_locally:bool = False):
     # run jekyll
     current_run_dir = os.getcwd()
     os.chdir(just_the_docs_template_dir)
-    os.system("bundle exec jekyll build")
-    
-    # clean html files
-    clean_html_files("_site")
-    generate_sitemap("_site/sitemap.txt")
-    #merge_json_into_just_the_docs_js()
+    try:
+        if run_jekyll:
+            jekyll_result = subprocess.run("bundle exec jekyll build", shell=True)
+            if jekyll_result.returncode != 0:
+                sys.exit(f"jekyll build failed with exit code {jekyll_result.returncode}")
 
+            # clean html files
+            clean_html_files("_site")
+            generate_sitemap("_site/sitemap.txt")
 
-    if (serve_locally):
-        os.chdir("_site")
-        os.system("python -m http.server 8000")
-    
-    #os.system("bundle exec jekyll serve")
-    os.chdir(current_run_dir)
+        if (serve_locally):
+            os.chdir("_site")
+            subprocess.run([sys.executable, "-m", "http.server", "8000"])
+    finally:
+        os.chdir(current_run_dir)
 
     return
 
 if __name__=="__main__":
-    serve_locally = True
-    convert_wiki_to_static_html(serve_locally)
+    parser = argparse.ArgumentParser(description="Convert a Github wiki to a static html site (template/_site).")
+    parser.add_argument("--serve", action="store_true", help="serve the generated site locally on port 8000 afterwards")
+    parser.add_argument("--skip-clone", action="store_true", help="reuse the existing wiki clone instead of recloning")
+    parser.add_argument("--skip-jekyll", action="store_true", help="only preprocess markdown into template/docs, skip the jekyll build")
+    parser.add_argument("--wiki-url", default=DEFAULT_WIKI_GIT_URL, help="git url of the wiki to convert")
+    args = parser.parse_args()
+
+    convert_wiki_to_static_html(
+        serve_locally=args.serve,
+        wiki_git_url=args.wiki_url,
+        reclone_wiki=not args.skip_clone,
+        run_jekyll=not args.skip_jekyll,
+    )
