@@ -1,5 +1,6 @@
 import argparse
 import glob
+import json
 import os
 import pathlib
 import re
@@ -8,6 +9,7 @@ import stat
 import subprocess
 import sys
 import urllib.parse
+from xml.sax.saxutils import escape as xml_escape
 
 # wiki page names may contain characters outside the console codepage (e.g. u+2010
 # in RSopen); never let a diagnostic print kill the build over that
@@ -24,18 +26,22 @@ SITE_URL = "https://www.geodms.nl"
 # add a nav_external_links entry there so the main site links to it.
 SITES = {
     "geodms": {
+        "title": "GeoDMS",
         "wiki_git_url": "https://github.com/ObjectVision/GeoDMS.wiki.git",
         "baseurl": "",
     },
     "rsopen": {
+        "title": "RSopen",
         "wiki_git_url": "https://github.com/ObjectVision/RSopen.wiki.git",
         "baseurl": "/rsopen",
     },
     "networkmodel_pbl": {
+        "title": "NetworkModel PBL",
         "wiki_git_url": "https://github.com/ObjectVision/NetworkModel_PBL.wiki.git",
         "baseurl": "/networkmodel_pbl",
     },
     "crisp": {
+        "title": "CRISP",
         "wiki_git_url": "https://github.com/ObjectVision/CRISP.wiki.git",
         "baseurl": "/crisp",
     },
@@ -76,6 +82,55 @@ def rewrite_cross_wiki_links(text:str, file_dicts_by_site:dict) -> str:
             return match.group(0)  # page unknown in that wiki: keep the github link
         return f"{SITE_URL}{baseurl}/docs/{key}.html{anchor}"
     return CROSS_WIKI_LINK_RE.sub(replace, text)
+
+INLINE_MD_LINK_RE = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
+WIKI_MD_LINK_RE = re.compile(r"\[\[(?:([^\]|]*)\|)?([^\]]*)\]\]")
+HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+def extract_description(md_text:str, max_length:int=160) -> str:
+    # first real paragraph of the page, markdown stripped: becomes the meta
+    # description (the snippet text search engines show). A leading breadcrumb
+    # line ("Network functions > Impedance functions > ...") is skipped in
+    # favour of the paragraph after it.
+    paragraphs = []
+    current = []
+    in_code_fence = False
+    for line in md_text.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith(("```", "~~~")):
+            in_code_fence = not in_code_fence
+        skip = (not stripped or in_code_fence
+                or stripped.startswith(("#", "|", "!", "```", "~~~", "---", "<", ">", "- ", "* ")))
+        if skip:
+            if current:
+                paragraphs.append(" ".join(current))
+                current = []
+                if len(paragraphs) >= 3:
+                    break
+            continue
+        current.append(stripped)
+    if current:
+        paragraphs.append(" ".join(current))
+
+    def strip_markdown(text):
+        text = INLINE_MD_LINK_RE.sub(lambda m: m.group(1), text)
+        text = WIKI_MD_LINK_RE.sub(lambda m: m.group(1) or m.group(2), text)
+        text = HTML_TAG_RE.sub("", text)
+        text = text.replace("`", "").replace("**", "").replace("*", "")
+        return " ".join(text.split())
+
+    cleaned = [p for p in (strip_markdown(p) for p in paragraphs) if p]
+    text = ""
+    for candidate in cleaned:
+        is_breadcrumb = "." not in candidate and (" > " in candidate or len(candidate) < 30)
+        if not is_breadcrumb:
+            text = candidate
+            break
+    if not text and cleaned:
+        text = cleaned[0]
+    if len(text) > max_length:
+        text = text[:max_length].rsplit(" ", 1)[0] + "…"
+    return text
 
 def is_table_delimiter_row(line:str) -> bool:
     stripped = line.strip()
@@ -156,12 +211,14 @@ def find_all_internal_markdown_links(text:str):
 def find_all_external_markdown_links(text:str):
     return re.findall(r"\[[^\[\]\v]+\]",text)
 
-def generate_md_header(base_name:str, name:str, parent, level:int, has_children:bool, is_in_navigation:bool):
+def generate_md_header(base_name:str, name:str, parent, level:int, has_children:bool, is_in_navigation:bool, description:str=""):
     display_name = base_name.replace("-", " ")
 
     header  = "---\n"
     header += f"title: {display_name}\n"
     header += f"layout: default\n"
+    if description:
+        header += f"description: {json.dumps(description, ensure_ascii=False)}\n"
 
     if has_children:
         header += "has_children: true\n"
@@ -189,7 +246,6 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
     if (is_in_navigation):
         parent, level, has_children = navigation_structure[name]
 
-    header = generate_md_header(base_name, name, parent, level, has_children, is_in_navigation)
     with open(md_fn_raw, "r", encoding="utf-8") as fn:
         names_with_big_tables_and_sup = {"value-type":True, "null":True}
 
@@ -236,13 +292,15 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
                 cleaned_text = cleaned_text.replace(link, f"![{link_alias}]({baseurl}/assets/img/{mid_path}{image_name})")
             else:
                 print(f"{link} {key} {md_fn_raw} is not in dict")
+    description = extract_description(cleaned_text)
+    header = generate_md_header(base_name, name, parent, level, has_children, is_in_navigation, description)
     cleaned_text = f"{header}# **{display_name}**\n{cleaned_text}"
     output_filename = f"{md_fldr_out}/{name}.md"
     with open(output_filename, "w", encoding="utf8") as f:
         f.write(cleaned_text)
 
 
-    return output_filename
+    return {"output_filename": output_filename, "key": name, "title": display_name, "description": description}
 
 def clean_html_files(html_folder:str, baseurl:str=""):
     html_files = glob.glob(f"{html_folder}/**/*.html", recursive=True)
@@ -359,13 +417,65 @@ def generate_sitemap(output_fn):
             fn.write(f"{SITE_URL}/{rel_page}\n")
     return
 
+def generate_sitemap_xml(pages, output_fn):
+    # like sitemap.txt but with the last wiki-commit date per page, so crawlers
+    # can prioritize what to recrawl
+    with open(output_fn, "w", encoding="utf-8") as fn:
+        fn.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+        fn.write('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n')
+        for page in sorted(pages, key=lambda p: p["url"]):
+            fn.write(f"  <url>\n    <loc>{xml_escape(page['url'])}</loc>\n")
+            if page.get("lastmod"):
+                fn.write(f"    <lastmod>{page['lastmod']}</lastmod>\n")
+            fn.write("  </url>\n")
+        fn.write("</urlset>\n")
+
+def generate_llms_txt(pages, output_fn):
+    # https://llmstxt.org/: a markdown index of the documentation, as a clean
+    # entry point for llm crawlers
+    with open(output_fn, "w", encoding="utf-8") as fn:
+        fn.write("# geodms.nl documentation\n\n")
+        fn.write("> GeoDMS is an open-source platform for building large, fast and transparent "
+                 "spatial models. This site documents GeoDMS itself and models built with it. "
+                 "The content is converted from the project github wikis; every page listed "
+                 "below is plain static html.\n")
+        for site_name, site in SITES.items():
+            site_pages = [p for p in pages if p["site"] == site_name]
+            if not site_pages:
+                continue
+            fn.write(f"\n## {site['title']}\n\n")
+            for page in sorted(site_pages, key=lambda p: p["url"]):
+                description = f": {page['description']}" if page["description"] else ""
+                fn.write(f"- [{page['title']}]({page['url']}){description}\n")
+
 def ensure_wiki(site_name:str, reclone_wiki:bool=True):
     wiki_dir = f"wikis/{site_name}"
     if reclone_wiki:
         rmtree_force(wiki_dir)
     if not os.path.isdir(wiki_dir):
         os.makedirs("wikis", exist_ok=True)
-        subprocess.run(["git", "clone", "--depth", "1", SITES[site_name]["wiki_git_url"], wiki_dir], check=True)
+        # blob:none: current files plus the full commit history (for sitemap
+        # lastmod dates) without downloading any historic file contents
+        subprocess.run(["git", "clone", "--filter=blob:none", SITES[site_name]["wiki_git_url"], wiki_dir], check=True)
+
+def collect_last_modified(wiki_dir:str) -> dict:
+    # last commit date (yyyy-mm-dd) per file, repo-relative posix paths; one git
+    # log pass, newest first, so the first date seen per file wins. Empty on a
+    # shallow clone: every file then just reports the single visible commit.
+    result = {}
+    log = subprocess.run(["git", "-C", wiki_dir, "-c", "core.quotepath=false", "log", "--format=\x01%cs", "--name-only"],
+                         capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if log.returncode != 0:
+        return result
+    current_date = None
+    for line in log.stdout.splitlines():
+        if line.startswith("\x01"):
+            current_date = line[1:]
+            continue
+        line = line.strip()
+        if line and current_date and line not in result:
+            result[line] = current_date
+    return result
 
 def collect_site_dicts(site_name:str):
     # returns (wiki_md_files, wiki_file_dict, wiki_image_dict, navigation_structure)
@@ -420,14 +530,28 @@ def build_site(site_name:str, dicts_by_site:dict, run_jekyll:bool=True):
         shutil.copytree(f"{wiki_dir}/images", f"{TEMPLATE_DIR}/assets/img")
         lowercase_tree(f"{TEMPLATE_DIR}/assets/img")
 
-    # convert links in each file
+    # convert links in each file, collecting page records for sitemap.xml/llms.txt
+    last_modified = collect_last_modified(wiki_dir)
+    pages = []
     for file in wiki_md_files:
-        cleaned_md_filename = clean_md_file(file, f"{TEMPLATE_DIR}/docs", wiki_file_dict, wiki_image_dict, navigation_structure, baseurl, all_file_dicts)
-        if "home" in cleaned_md_filename:
-            shutil.move(cleaned_md_filename, f"{TEMPLATE_DIR}/index.md")
+        record = clean_md_file(file, f"{TEMPLATE_DIR}/docs", wiki_file_dict, wiki_image_dict, navigation_structure, baseurl, all_file_dicts)
+        is_home = "home" in record["output_filename"]
+        if is_home:
+            shutil.move(record["output_filename"], f"{TEMPLATE_DIR}/index.md")
+
+        if record["key"].startswith("_"):  # _Sidebar/_Footer, not rendered by jekyll
+            continue
+        if is_home:
+            record["url"] = f"{SITE_URL}{baseurl}/"
+        else:
+            record["url"] = f"{SITE_URL}{baseurl}/docs/{urllib.parse.quote(record['key'])}.html"
+        rel_source = os.path.relpath(file, wiki_dir).replace("\\", "/")
+        record["lastmod"] = last_modified.get(rel_source)
+        record["site"] = site_name
+        pages.append(record)
 
     if not run_jekyll:
-        return
+        return pages
 
     # run jekyll: base config plus the per-site overlay (title, baseurl, links)
     configs = "_config.yml"
@@ -440,6 +564,7 @@ def build_site(site_name:str, dicts_by_site:dict, run_jekyll:bool=True):
         sys.exit(f"jekyll build of {site_name} failed with exit code {jekyll_result.returncode}")
 
     clean_html_files(f"{OUT_ROOT}{baseurl}", baseurl)
+    return pages
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description=f"Convert the Github wikis of {', '.join(SITES)} to one static html site in {OUT_ROOT}/.")
@@ -466,11 +591,16 @@ if __name__=="__main__":
 
     # the root site must build first: jekyll cleans its destination (_out itself),
     # keep_files in _config.yml protects the subsite dirs on partial rebuilds
+    all_pages = []
     for site_name in [s for s in SITES if s in selected]:
-        build_site(site_name, dicts_by_site, run_jekyll=run_jekyll)
+        all_pages += build_site(site_name, dicts_by_site, run_jekyll=run_jekyll)
 
     if run_jekyll:
         generate_sitemap(f"{OUT_ROOT}/sitemap.txt")
+    if set(selected) == set(SITES):  # partial builds would produce incomplete files
+        os.makedirs(OUT_ROOT, exist_ok=True)
+        generate_sitemap_xml(all_pages, f"{OUT_ROOT}/sitemap.xml")
+        generate_llms_txt(all_pages, f"{OUT_ROOT}/llms.txt")
 
     if args.serve:
         subprocess.run([sys.executable, "-m", "http.server", "8000"], cwd=OUT_ROOT)

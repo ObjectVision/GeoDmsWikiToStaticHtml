@@ -2,6 +2,7 @@
 title: RSopen
 description: Documentatie van het RSopen ruimtelijk model
 baseurl: "/rsopen"
+lang: nl
 keep_files: [".git"]
 
 aux_links:
