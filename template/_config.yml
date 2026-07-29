@@ -28,3 +28,15 @@ nav_external_links:
     hide_icon: false # set to true to hide the external link icon
     opens_in_new_tab: true # set to true to open this link in a new tab
     parent: Software
+  - title: RSopen model
+    url: https://www.geodms.nl/rsopen/
+    hide_icon: false
+    opens_in_new_tab: false
+  - title: NetworkModel PBL
+    url: https://www.geodms.nl/networkmodel_pbl/
+    hide_icon: false
+    opens_in_new_tab: false
+
+# the root site builds into _out/ where the subsites live in subdirectories;
+# keep_files stops jekyll from deleting them when it cleans its destination
+keep_files: [".git", "rsopen", "networkmodel_pbl"]

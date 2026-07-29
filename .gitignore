@@ -1,5 +1,7 @@
 # build inputs and outputs of convert_wiki_to_static_html.py
 wiki/
+wikis/
+_out/
 template/docs/
 template/index.md
 template/assets/img/

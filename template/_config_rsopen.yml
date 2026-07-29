@@ -1,0 +1,14 @@
+# overlay on _config.yml for the RSopen subsite (jekyll --config _config.yml,_config_rsopen.yml)
+title: RSopen
+description: Documentatie van het RSopen ruimtelijk model
+baseurl: "/rsopen"
+keep_files: [".git"]
+
+aux_links:
+  RSopen on Github: https://github.com/ObjectVision/RSopen
+
+nav_external_links:
+  - title: GeoDMS documentation
+    url: https://www.geodms.nl
+    hide_icon: false
+    opens_in_new_tab: false

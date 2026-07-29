@@ -28,7 +28,7 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: "17 3 * * *" # nightly, 03:17 UTC
+    - cron: "17 3 * * *" # nightly, 03:17 UTC; for weekly use e.g. "17 3 * * 1" (Monday)
   repository_dispatch:
     types: [wiki-updated]
 
@@ -57,7 +57,7 @@ jobs:
           working-directory: template
           bundler-cache: true # bundle install + cache, driven by template/Gemfile.lock
 
-      - name: Convert wiki to static html
+      - name: Convert wikis to static html
         run: python convert_wiki_to_static_html.py
 
       - name: Upload site as artifact (dry run)
@@ -65,7 +65,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: geodms.nl-site
-          path: template/_site/
+          path: _out/
 
       - name: Deploy to geodms.nl
         if: ${{ !inputs.dry_run }}
@@ -75,5 +75,5 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
-          local-dir: template/_site/
+          local-dir: _out/
           server-dir: ${{ vars.FTP_SERVER_DIR || 'public_html/' }}
