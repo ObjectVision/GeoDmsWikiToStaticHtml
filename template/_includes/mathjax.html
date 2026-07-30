@@ -1,19 +1,8 @@
-<!-- Automatically display code inside script tags with type=math/tex using MathJax -->
+<!-- MathJax 3 configuration: inline $...$ math and kramdown's math/tex script nodes.
+     Must be loaded before the mathjax bundle below; both are deferred, so they run in
+     document order. relative_url keeps this correct on the subsites, which have a baseurl. -->
 <script type="text/javascript" defer
-  src="../assets/js/mathjax-script-type.js">
-</script>
-
-<script type="text/x-mathjax-config">
-  MathJax.Hub.Config({
-    extensions: ["tex2jax.js"],
-    jax: ["input/TeX", "output/HTML-CSS"],
-    tex2jax: {
-      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
-      displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
-      processEscapes: true
-    },
-    "HTML-CSS": { fonts: ["TeX"] }
-  });
+  src="{{ '/assets/js/mathjax-script-type.js' | relative_url }}">
 </script>
 
 <!-- Copied from https://docs.mathjax.org/en/latest/web/components/combined.html -->
