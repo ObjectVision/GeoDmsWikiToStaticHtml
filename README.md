@@ -12,6 +12,7 @@ One run builds all wikis into a single `_out/` tree that is deployed as one whol
 | RSopen | https://github.com/ObjectVision/RSopen/wiki | https://www.geodms.nl/rsopen/ |
 | NetworkModel PBL | https://github.com/ObjectVision/NetworkModel_PBL/wiki | https://www.geodms.nl/networkmodel_pbl/ |
 | CRISP | https://github.com/ObjectVision/CRISP/wiki | https://www.geodms.nl/crisp/ |
+| GeoDMS Academy | https://github.com/ObjectVision/GeoDMS_Academy/wiki | https://www.geodms.nl/academy/ |
 
 The main site links to the subsites in its navigation bar; each subsite links back. `_out/sitemap.xml` (with per-page last-modified dates from the wiki git history) and the older `_out/sitemap.txt` cover all sites — point the server's hand-placed `robots.txt` at `https://www.geodms.nl/sitemap.xml`. `_out/llms.txt` is a markdown index of all pages ([llmstxt.org](https://llmstxt.org/)), a clean entry point for llm crawlers. `_out/.well-known/security.txt` states where to report security issues ([RFC 9116](https://www.rfc-editor.org/rfc/rfc9116)); change the addresses in `SECURITY_CONTACTS` in the script.
 
