@@ -95,8 +95,19 @@ jobs:
             exit 0
           fi
           echo "Submitting $count url(s) to IndexNow."
-          curl -sS -X POST https://api.indexnow.org/indexnow \
-            -H "Content-Type: application/json; charset=utf-8" \
-            --data @indexnow-payload.json \
-            -o response.txt -w "HTTP %{http_code}\n" || true
-          cat response.txt || true
+          # The key file is uploaded by the deploy step just above; IndexNow fetches it to
+          # verify ownership and answers 403 while it cannot see it yet. Hence the retries.
+          for delay in 0 20 60; do
+            [ "$delay" = "0" ] || { echo "Retrying in ${delay}s."; sleep "$delay"; }
+            status=$(curl -sS -X POST https://api.indexnow.org/indexnow \
+              -H "Content-Type: application/json; charset=utf-8" \
+              --data @indexnow-payload.json \
+              -o response.txt -w "%{http_code}") || status="000"
+            echo "HTTP $status"
+            [ -s response.txt ] && cat response.txt
+            case "$status" in
+              200|202) echo "IndexNow accepted the submission."; exit 0 ;;
+            esac
+          done
+          # a failed notification must not fail an otherwise good deploy
+          echo "::warning::IndexNow submission did not succeed (last status $status); the sitemap still covers these pages."
