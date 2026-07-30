@@ -1,0 +1,15 @@
+# overlay on _config.yml for the GeoDMS Academy subsite
+# (jekyll --config _config.yml,_config_academy.yml)
+title: GeoDMS Academy
+description: Hands-on course for learning GeoDMS, from installing the GUI to allocating land use, with exercises and worked examples
+baseurl: "/academy"
+keep_files: [".git"]
+
+aux_links:
+  GeoDMS Academy on Github: https://github.com/ObjectVision/GeoDMS_Academy
+
+nav_external_links:
+  - title: GeoDMS documentation
+    url: https://www.geodms.nl
+    hide_icon: false
+    opens_in_new_tab: false

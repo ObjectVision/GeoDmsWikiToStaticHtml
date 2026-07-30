@@ -47,6 +47,11 @@ SITES = {
         "wiki_git_url": "https://github.com/ObjectVision/CRISP.wiki.git",
         "baseurl": "/crisp",
     },
+    "academy": {
+        "title": "GeoDMS Academy",
+        "wiki_git_url": "https://github.com/ObjectVision/GeoDMS_Academy.wiki.git",
+        "baseurl": "/academy",
+    },
 }
 
 OUT_ROOT = "_out"
