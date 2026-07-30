@@ -13,7 +13,7 @@ One run builds all wikis into a single `_out/` tree that is deployed as one whol
 | NetworkModel PBL | https://github.com/ObjectVision/NetworkModel_PBL/wiki | https://www.geodms.nl/networkmodel_pbl/ |
 | CRISP | https://github.com/ObjectVision/CRISP/wiki | https://www.geodms.nl/crisp/ |
 
-The main site links to the subsites in its navigation bar; each subsite links back. `_out/sitemap.xml` (with per-page last-modified dates from the wiki git history) and the older `_out/sitemap.txt` cover all sites — point the server's hand-placed `robots.txt` at `https://www.geodms.nl/sitemap.xml`. `_out/llms.txt` is a markdown index of all pages ([llmstxt.org](https://llmstxt.org/)), a clean entry point for llm crawlers.
+The main site links to the subsites in its navigation bar; each subsite links back. `_out/sitemap.xml` (with per-page last-modified dates from the wiki git history) and the older `_out/sitemap.txt` cover all sites — point the server's hand-placed `robots.txt` at `https://www.geodms.nl/sitemap.xml`. `_out/llms.txt` is a markdown index of all pages ([llmstxt.org](https://llmstxt.org/)), a clean entry point for llm crawlers. `_out/.well-known/security.txt` states where to report security issues ([RFC 9116](https://www.rfc-editor.org/rfc/rfc9116)); change the addresses in `SECURITY_CONTACTS` in the script.
 
 The wikis can link to each other (and to themselves) with their normal github wiki urls, e.g. `https://github.com/ObjectVision/RSopen/wiki/Beschikbaarheid`: the converter rewrites those to the corresponding internal geodms.nl location, including `#section` anchors. Links to pages that do not exist in the target wiki are kept as github links.
 
@@ -63,6 +63,7 @@ To upload a locally built site to the webserver, store a WinSCP site with the ft
 ```
 
 # Notes
+- Math is rendered by MathJax 3, configured in `template/assets/js/mathjax-script-type.js` (loaded before the mathjax bundle, both deferred). The wikis write inline math as `$...$`, which MathJax 3 does not recognise out of the box — without that config every inline formula shows up as raw LaTeX. Code and pre blocks are skipped by MathJax, and `\$` stays a literal dollar.
 - Every page gets a meta description (the snippet text in search results) extracted from its first real paragraph; a leading breadcrumb or tag line is skipped in favour of the paragraph after it. Pages that start with only tables or images fall back to the site description.
 - Non-English sites set `lang` in their `_config_<name>.yml` (RSopen: `lang: nl`).
 - Github renders a markdown table that directly follows a paragraph, kramdown/Jekyll does not; the converter inserts the missing blank line so such tables render correctly here too.

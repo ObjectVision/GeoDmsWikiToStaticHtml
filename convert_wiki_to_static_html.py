@@ -9,6 +9,7 @@ import stat
 import subprocess
 import sys
 import urllib.parse
+from datetime import datetime, timedelta, timezone
 from xml.sax.saxutils import escape as xml_escape
 
 # wiki page names may contain characters outside the console codepage (e.g. u+2010
@@ -49,6 +50,12 @@ SITES = {
 
 OUT_ROOT = "_out"
 TEMPLATE_DIR = "template"
+
+# where security researchers should report an issue, most preferred first (RFC 9116)
+SECURITY_CONTACTS = [
+    "mailto:info@objectvision.nl",
+    "https://github.com/ObjectVision/GeoDMS/security/policy",
+]
 
 # github repo name -> site name, e.g. "RSopen" -> "rsopen", derived from the wiki urls
 REPO_TO_SITE = {}
@@ -430,6 +437,18 @@ def generate_sitemap_xml(pages, output_fn):
             fn.write("  </url>\n")
         fn.write("</urlset>\n")
 
+def generate_security_txt(output_fn):
+    # https://www.rfc-editor.org/rfc/rfc9116 — Expires is mandatory; it is refreshed on
+    # every build, so it cannot go stale while the site is still being rebuilt.
+    expires = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(days=365)
+    os.makedirs(os.path.dirname(output_fn), exist_ok=True)
+    with open(output_fn, "w", encoding="utf-8") as fn:
+        for contact in SECURITY_CONTACTS:
+            fn.write(f"Contact: {contact}\n")
+        fn.write(f"Expires: {expires.strftime('%Y-%m-%dT%H:%M:%SZ')}\n")
+        fn.write("Preferred-Languages: nl, en\n")
+        fn.write(f"Canonical: {SITE_URL}/.well-known/security.txt\n")
+
 def generate_llms_txt(pages, output_fn):
     # https://llmstxt.org/: a markdown index of the documentation, as a clean
     # entry point for llm crawlers
@@ -601,6 +620,7 @@ if __name__=="__main__":
         os.makedirs(OUT_ROOT, exist_ok=True)
         generate_sitemap_xml(all_pages, f"{OUT_ROOT}/sitemap.xml")
         generate_llms_txt(all_pages, f"{OUT_ROOT}/llms.txt")
+        generate_security_txt(f"{OUT_ROOT}/.well-known/security.txt")
 
     if args.serve:
         subprocess.run([sys.executable, "-m", "http.server", "8000"], cwd=OUT_ROOT)
