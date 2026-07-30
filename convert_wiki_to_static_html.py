@@ -51,9 +51,10 @@ SITES = {
 OUT_ROOT = "_out"
 TEMPLATE_DIR = "template"
 
-# where security researchers should report an issue, most preferred first (RFC 9116)
+# where security researchers should report an issue, most preferred first (RFC 9116).
+# Deliberately a url and not a mailto: the github security policy already routes to the
+# right mailbox, and publishing an address here mostly attracts bounty-beggar spam.
 SECURITY_CONTACTS = [
-    "mailto:info@objectvision.nl",
     "https://github.com/ObjectVision/GeoDMS/security/policy",
 ]
 
