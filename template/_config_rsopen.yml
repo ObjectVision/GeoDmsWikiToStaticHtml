@@ -1,6 +1,8 @@
 # overlay on _config.yml for the RSopen subsite (jekyll --config _config.yml,_config_rsopen.yml)
-title: RSopen
-description: Documentatie van het RSopen ruimtelijk model
+# the title ends up in every page title ("Introductie | RSopen (RuimteScanner)"), which is
+# where search engines look; the model is far better known as RuimteScanner than as RSopen
+title: RSopen (RuimteScanner)
+description: Documentatie van RSopen, de open-sourceversie van het RuimteScanner 2.0-model voor ruimtelijke allocatie van wonen, werken en landgebruik
 baseurl: "/rsopen"
 lang: nl
 keep_files: [".git"]
