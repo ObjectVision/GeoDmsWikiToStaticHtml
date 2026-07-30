@@ -2,6 +2,7 @@
 wiki/
 wikis/
 _out/
+_external_images/
 template/docs/
 template/index.md
 template/assets/img/
@@ -11,3 +12,5 @@ template/.bundle/
 template/vendor/
 __pycache__/
 *.log
+indexnow-payload.json
+response.txt

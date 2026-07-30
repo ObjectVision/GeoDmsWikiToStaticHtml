@@ -27,6 +27,10 @@ on:
         description: "Build only: upload the site as an artifact, do not deploy"
         type: boolean
         default: false
+      indexnow_all:
+        description: "Submit every page to IndexNow, not just recently changed ones"
+        type: boolean
+        default: false
   schedule:
     - cron: "17 3 * * *" # nightly, 03:17 UTC; for weekly use e.g. "17 3 * * 1" (Monday)
   repository_dispatch:
@@ -58,7 +62,7 @@ jobs:
           bundler-cache: true # bundle install + cache, driven by template/Gemfile.lock
 
       - name: Convert wikis to static html
-        run: python convert_wiki_to_static_html.py
+        run: python convert_wiki_to_static_html.py ${{ inputs.indexnow_all && '--indexnow-all' || '' }}
 
       - name: Upload site as artifact (dry run)
         if: inputs.dry_run
@@ -77,3 +81,22 @@ jobs:
           protocol: ftps
           local-dir: _out/
           server-dir: ${{ vars.FTP_SERVER_DIR || 'public_html/' }}
+
+      # Tell Bing (and Yandex, Seznam, Naver) which pages changed. No account needed:
+      # ownership is proven by the key file that was just deployed to the site root.
+      # Runs after the deploy on purpose, so the urls are live before we announce them.
+      - name: Notify IndexNow of changed pages
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          count=$(python -c "import json; print(len(json.load(open('indexnow-payload.json'))['urlList']))")
+          if [ "$count" = "0" ]; then
+            echo "No pages changed, nothing to submit."
+            exit 0
+          fi
+          echo "Submitting $count url(s) to IndexNow."
+          curl -sS -X POST https://api.indexnow.org/indexnow \
+            -H "Content-Type: application/json; charset=utf-8" \
+            --data @indexnow-payload.json \
+            -o response.txt -w "HTTP %{http_code}\n" || true
+          cat response.txt || true

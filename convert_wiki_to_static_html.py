@@ -9,6 +9,7 @@ import stat
 import subprocess
 import sys
 import urllib.parse
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from xml.sax.saxutils import escape as xml_escape
 
@@ -51,6 +52,12 @@ SITES = {
 OUT_ROOT = "_out"
 TEMPLATE_DIR = "template"
 
+# IndexNow (https://www.indexnow.org/) lets us tell Bing, Yandex, Seznam and Naver which
+# pages changed, without an account anywhere. The key is public by design: it is served at
+# SITE_URL/<key>.txt to prove we control the site. Google does not use IndexNow.
+INDEXNOW_KEY = "25c546cdc37b205474a8170f224fca70"
+INDEXNOW_PAYLOAD_FILE = "indexnow-payload.json"  # outside _out, so it is not deployed
+
 # where security researchers should report an issue, most preferred first (RFC 9116).
 # Deliberately a url and not a mailto: the github security policy already routes to the
 # right mailbox, and publishing an address here mostly attracts bounty-beggar spam.
@@ -90,6 +97,51 @@ def rewrite_cross_wiki_links(text:str, file_dicts_by_site:dict) -> str:
             return match.group(0)  # page unknown in that wiki: keep the github link
         return f"{SITE_URL}{baseurl}/docs/{key}.html{anchor}"
     return CROSS_WIKI_LINK_RE.sub(replace, text)
+
+# Images pasted straight into the github wiki editor end up on github's attachment CDN
+# instead of in the wiki's images/ folder. Serving those from geodms.nl instead keeps the
+# site self-contained: no dependency on github staying reachable and on its (signed,
+# short-lived) urls, no visitor data leaking to github, and a strict img-src CSP can hold.
+EXTERNAL_IMAGE_RE = re.compile(r"https://github\.com/user-attachments/assets/[0-9a-fA-F-]+")
+EXTERNAL_IMAGE_DIR = "_external_images"   # download cache, outside template/
+EXTERNAL_IMAGE_SUBDIR = "external"        # lands in assets/img/external/
+CONTENT_TYPE_EXTENSIONS = {
+    "image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif",
+    "image/webp": ".webp", "image/svg+xml": ".svg", "image/bmp": ".bmp",
+}
+
+def localize_external_images(text:str, baseurl:str) -> str:
+    # download each external image once into EXTERNAL_IMAGE_DIR and point the markdown at
+    # our own copy; on any failure the original url is kept so the page still renders
+    def replace(match):
+        url = match.group(0)
+        image_id = url.rsplit("/", 1)[-1]
+        existing = glob.glob(f"{EXTERNAL_IMAGE_DIR}/{image_id}.*")
+        if existing:
+            name = os.path.basename(existing[0])
+            return f"{baseurl}/assets/img/{EXTERNAL_IMAGE_SUBDIR}/{name}"
+
+        try:
+            request = urllib.request.Request(url, headers={"User-Agent": "GeoDmsWikiToStaticHtml"})
+            with urllib.request.urlopen(request, timeout=60) as response:
+                content_type = (response.headers.get("Content-Type") or "").split(";")[0].strip()
+                data = response.read()
+        except Exception as e:
+            print(f"external image {url} could not be downloaded ({e}), keeping the github url")
+            return url
+
+        extension = CONTENT_TYPE_EXTENSIONS.get(content_type)
+        if not extension:
+            print(f"external image {url} has unexpected type {content_type!r}, keeping the github url")
+            return url
+
+        os.makedirs(EXTERNAL_IMAGE_DIR, exist_ok=True)
+        name = f"{image_id}{extension}"
+        with open(f"{EXTERNAL_IMAGE_DIR}/{name}", "wb") as fn:
+            fn.write(data)
+        return f"{baseurl}/assets/img/{EXTERNAL_IMAGE_SUBDIR}/{name}"
+
+    return EXTERNAL_IMAGE_RE.sub(replace, text)
 
 INLINE_MD_LINK_RE = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
 WIKI_MD_LINK_RE = re.compile(r"\[\[(?:([^\]|]*)\|)?([^\]]*)\]\]")
@@ -260,6 +312,7 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
         text = fn.read()
 
         cleaned_text = insert_blank_line_before_tables(text)
+        cleaned_text = localize_external_images(cleaned_text, baseurl)
         if all_file_dicts:
             cleaned_text = rewrite_cross_wiki_links(cleaned_text, all_file_dicts)
 
@@ -438,6 +491,27 @@ def generate_sitemap_xml(pages, output_fn):
             fn.write("  </url>\n")
         fn.write("</urlset>\n")
 
+def generate_indexnow(pages, out_root:str, changed_within_days:int, submit_all:bool):
+    # key file, served from the site root, and the payload the workflow posts after deploy
+    with open(f"{out_root}/{INDEXNOW_KEY}.txt", "w", encoding="utf-8") as fn:
+        fn.write(INDEXNOW_KEY)
+
+    if submit_all:
+        urls = [p["url"] for p in pages]
+    else:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=changed_within_days)).strftime("%Y-%m-%d")
+        urls = [p["url"] for p in pages if p.get("lastmod") and p["lastmod"] >= cutoff]
+
+    payload = {
+        "host": SITE_URL.split("//", 1)[-1],
+        "key": INDEXNOW_KEY,
+        "keyLocation": f"{SITE_URL}/{INDEXNOW_KEY}.txt",
+        "urlList": sorted(urls),
+    }
+    with open(INDEXNOW_PAYLOAD_FILE, "w", encoding="utf-8") as fn:
+        json.dump(payload, fn, indent=1)
+    print(f"indexnow: {len(urls)} url(s) queued in {INDEXNOW_PAYLOAD_FILE}")
+
 def generate_security_txt(output_fn):
     # https://www.rfc-editor.org/rfc/rfc9116 — Expires is mandatory; it is refreshed on
     # every build, so it cannot go stale while the site is still being rebuilt.
@@ -550,7 +624,8 @@ def build_site(site_name:str, dicts_by_site:dict, run_jekyll:bool=True):
         shutil.copytree(f"{wiki_dir}/images", f"{TEMPLATE_DIR}/assets/img")
         lowercase_tree(f"{TEMPLATE_DIR}/assets/img")
 
-    # convert links in each file, collecting page records for sitemap.xml/llms.txt
+    # convert links in each file, collecting page records for sitemap.xml/llms.txt.
+    # downloaded external images are copied in afterwards, once they are all known.
     last_modified = collect_last_modified(wiki_dir)
     pages = []
     for file in wiki_md_files:
@@ -569,6 +644,10 @@ def build_site(site_name:str, dicts_by_site:dict, run_jekyll:bool=True):
         record["lastmod"] = last_modified.get(rel_source)
         record["site"] = site_name
         pages.append(record)
+
+    # serve the downloaded github-hosted images from our own assets folder
+    if os.path.isdir(EXTERNAL_IMAGE_DIR):
+        shutil.copytree(EXTERNAL_IMAGE_DIR, f"{TEMPLATE_DIR}/assets/img/{EXTERNAL_IMAGE_SUBDIR}", dirs_exist_ok=True)
 
     if not run_jekyll:
         return pages
@@ -592,6 +671,8 @@ if __name__=="__main__":
     parser.add_argument("--serve", action="store_true", help=f"serve {OUT_ROOT}/ locally on port 8000 afterwards")
     parser.add_argument("--skip-clone", action="store_true", help="reuse existing wiki clones instead of recloning")
     parser.add_argument("--skip-jekyll", action="store_true", help="only preprocess markdown into template/docs, skip jekyll and deployment output")
+    parser.add_argument("--indexnow-days", type=int, default=2, help="queue pages whose wiki page changed within this many days for IndexNow (default 2)")
+    parser.add_argument("--indexnow-all", action="store_true", help="queue every page for IndexNow instead of only recently changed ones")
     args = parser.parse_args()
 
     selected = [s.strip() for s in args.sites.split(",") if s.strip()]
@@ -622,6 +703,7 @@ if __name__=="__main__":
         generate_sitemap_xml(all_pages, f"{OUT_ROOT}/sitemap.xml")
         generate_llms_txt(all_pages, f"{OUT_ROOT}/llms.txt")
         generate_security_txt(f"{OUT_ROOT}/.well-known/security.txt")
+        generate_indexnow(all_pages, OUT_ROOT, args.indexnow_days, args.indexnow_all)
 
     if args.serve:
         subprocess.run([sys.executable, "-m", "http.server", "8000"], cwd=OUT_ROOT)

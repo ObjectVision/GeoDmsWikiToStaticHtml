@@ -63,6 +63,8 @@ To upload a locally built site to the webserver, store a WinSCP site with the ft
 ```
 
 # Notes
+- Images pasted directly into the github wiki editor end up on github's attachment CDN instead of in the wiki's `images/` folder. The converter downloads those (cached in `_external_images/`) and serves them from `assets/img/external/`, so the site stays self-contained, leaks no visitor data to github, and can run a strict `img-src` policy. A download failure is reported and leaves the github url in place.
+- After every deploy the workflow notifies [IndexNow](https://www.indexnow.org/) of the pages whose wiki source changed in the last two days, which reaches Bing, Yandex, Seznam and Naver without needing an account (Google ignores IndexNow; it uses the sitemap). Run the workflow with *indexnow_all* to submit every page once. The key in `INDEXNOW_KEY` is public by design and is served from the site root.
 - Math is rendered by MathJax 3, configured in `template/assets/js/mathjax-script-type.js` (loaded before the mathjax bundle, both deferred). The wikis write inline math as `$...$`, which MathJax 3 does not recognise out of the box — without that config every inline formula shows up as raw LaTeX. Code and pre blocks are skipped by MathJax, and `\$` stays a literal dollar.
 - Every page gets a meta description (the snippet text in search results) extracted from its first real paragraph; a leading breadcrumb or tag line is skipped in favour of the paragraph after it. Pages that start with only tables or images fall back to the site description.
 - Non-English sites set `lang` in their `_config_<name>.yml` (RSopen: `lang: nl`).
