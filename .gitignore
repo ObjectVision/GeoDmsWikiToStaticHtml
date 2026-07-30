@@ -14,3 +14,4 @@ __pycache__/
 *.log
 indexnow-payload.json
 response.txt
+.vs/
