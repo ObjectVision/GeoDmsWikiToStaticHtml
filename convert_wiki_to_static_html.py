@@ -387,7 +387,7 @@ def clean_html_files(html_folder:str, baseurl:str=""):
     for html_file in html_files:
         clean_html_file(html_file, baseurl=baseurl)
 
-def clean_html_file(html_fn_raw:str, set_nav_tabs_open:bool=True, convert_paths_for_local_use:bool=False, remove_jekyll_header_part=False, baseurl:str=""):
+def clean_html_file(html_fn_raw:str, convert_paths_for_local_use:bool=False, remove_jekyll_header_part=False, baseurl:str=""):
     text = ""
     with open(html_fn_raw, "r", encoding="utf-8") as fn:
         text = fn.read()
@@ -405,10 +405,10 @@ def clean_html_file(html_fn_raw:str, set_nav_tabs_open:bool=True, convert_paths_
         if not is_index_page:
             text = text.replace("docs/", f"")
 
-    if (set_nav_tabs_open):
-        text = text.replace('<li class="nav-list-item">', '<li class="nav-list-item active">')
-        text = text.replace('aria-pressed="false"', 'aria-pressed="true"')
-        text = text.replace(f'{baseurl}/favicon.ico', f'{prefix}favicon.ico')
+    # The page tree used to be forced open by marking every item active, which put some two
+    # hundred links on screen at once and left no shape to see. It is collapsed now: the
+    # theme opens the branch the current page is in, which is what a reader needs.
+    text = text.replace(f'{baseurl}/favicon.ico', f'{prefix}favicon.ico')
 
     if remove_jekyll_header_part:
         # note: this drops the canonical url and meta description, which search
