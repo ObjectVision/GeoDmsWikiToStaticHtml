@@ -22,29 +22,14 @@ footer_content: "GeoDMS by <a href=\"https://objectvision.nl\">Object Vision BV<
 aux_links:
   GeoDMS on Github: https://github.com/ObjectVision/GeoDMS
 
+# The links between the documentation sites live in the bar at the top of every page
+# (_includes/masthead.html); repeating them at the foot of the page tree is noise.
 nav_external_links:
   - title: Releases
     url: https://github.com/ObjectVision/GeoDMS/releases
     hide_icon: false # set to true to hide the external link icon
     opens_in_new_tab: true # set to true to open this link in a new tab
-    parent: Software
-  # the course comes before the model subsites: it is where a new user should start
-  - title: GeoDMS Academy (course)
-    url: https://www.geodms.nl/academy/
-    hide_icon: false
-    opens_in_new_tab: false
-  - title: RSopen (RuimteScanner)
-    url: https://www.geodms.nl/rsopen/
-    hide_icon: false
-    opens_in_new_tab: false
-  - title: NetworkModel PBL
-    url: https://www.geodms.nl/networkmodel_pbl/
-    hide_icon: false
-    opens_in_new_tab: false
-  - title: CRISP
-    url: https://www.geodms.nl/crisp/
-    hide_icon: false
-    opens_in_new_tab: false
+    parent: Getting started
 
 # the root site builds into _out/ where the subsites live in subdirectories;
 # keep_files stops jekyll from deleting them when it cleans its destination

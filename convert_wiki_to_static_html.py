@@ -56,6 +56,7 @@ SITES = {
 
 OUT_ROOT = "_out"
 TEMPLATE_DIR = "template"
+NAV_DIR = "nav"  # optional per-site page tree, overriding the wiki's own _Sidebar.md
 
 # Set by --preview: every site moves into that subdirectory of the domain, so a redesign can
 # be looked at on the real server without touching the live site. Empty for a real build.
@@ -280,7 +281,20 @@ def find_all_internal_markdown_links(text:str):
 def find_all_external_markdown_links(text:str):
     return re.findall(r"\[[^\[\]\v]+\]",text)
 
-def generate_md_header(base_name:str, name:str, parent, level:int, has_children:bool, is_in_navigation:bool, description:str=""):
+def nav_parent_title(parent, wiki_file_dict):
+    # just-the-docs matches a child to its parent on the parent's title, so this has to be the
+    # title the parent page actually gets: the one from its file name. Taking it from the
+    # sidebar text instead loses to any difference in case, which is how the four pages under
+    # [[Data Source]] fell out of a tree whose page is called Data-source.md.
+    if not parent:
+        return ""
+    parent_file = wiki_file_dict.get(parent[0]) if wiki_file_dict else None
+    if parent_file:
+        return os.path.splitext(os.path.basename(parent_file))[0].replace("-", " ")
+    return parent[1].replace("-", " ")  # a generated section heading has no file
+
+
+def generate_md_header(base_name:str, name:str, parent_title:str, level:int, has_children:bool, is_in_navigation:bool, description:str=""):
     display_name = base_name.replace("-", " ")
 
     header  = "---\n"
@@ -293,9 +307,8 @@ def generate_md_header(base_name:str, name:str, parent, level:int, has_children:
         header += "has_children: true\n"
         header += "nav_fold : true\n"
 
-    if (parent):
-        display_parent_name = parent[1].replace("-", " ")
-        header += f"parent: {display_parent_name}\n"
+    if parent_title:
+        header += f"parent: {parent_title}\n"
 
     if not is_in_navigation and not "home" in name:
         header += "nav_exclude: true\n"
@@ -368,7 +381,8 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
             else:
                 print(f"{link} {key} {md_fn_raw} is not in dict")
     description = extract_description(cleaned_text)
-    header = generate_md_header(base_name, name, parent, level, has_children, is_in_navigation, description)
+    header = generate_md_header(base_name, name, nav_parent_title(parent, wiki_file_dict),
+                                level, has_children, is_in_navigation, description)
     # The page title is added as the h1, except when the wiki page already opens with one:
     # the RSopen home page did, and ended up with "Home" above "RSopen (RuimteScanner 2.0)".
     if cleaned_text.lstrip().startswith("# "):
@@ -430,8 +444,14 @@ def get_number_of_leading_spaces(line:str) -> int:
         number_of_spaces+=1
     return number_of_spaces
 
+SECTION_LINE_RE = re.compile(r"^\s*[-*]\s+(\S.*?)\s*$")
+
+
 def get_navigation_structure_from_sidebar(sidebar_fn:str):
+    # returns (navigation_structure, sections), where sections maps the key of a heading
+    # without a page of its own to its title; those get a generated stub page, see build_site
     navigation_structure = {}
+    sections = {}
     previous_level = -1
     previous_parent = None
     parent_stack = []
@@ -448,11 +468,17 @@ def get_navigation_structure_from_sidebar(sidebar_fn:str):
             internal_links = find_all_internal_markdown_links(line)
             external_links = find_all_external_markdown_links(line)
 
-            if not internal_links and not external_links:
-                continue
-
             key = None
-            if internal_links:
+            if not internal_links and not external_links:
+                # a list item that is plain text is a grouping heading, e.g. "- Annex". It
+                # used to be dropped, which left its children at the top level.
+                section = SECTION_LINE_RE.match(line)
+                if not section:
+                    continue
+                raw_key = section.group(1)
+                key = raw_key.replace(" ", "-").lower()
+                sections[key] = raw_key
+            elif internal_links:
                 link_alias, raw_key, key = get_filename_key_from_md_link(internal_links[0])
             else:
                 # [text](target): a wiki page link takes its key from the target,
@@ -466,19 +492,16 @@ def get_navigation_structure_from_sidebar(sidebar_fn:str):
                 else:
                     link_alias, raw_key, key = get_filename_key_from_md_link(external_links[0], "[", "]")
 
-            parent = None
-            if len(parent_stack):
-                parent = parent_stack[-1][0]
+            # The stack holds [item, indent-of-its-children]. Unwind to this line's own level
+            # first: dedenting by two levels at once used to pop only one, which handed the
+            # next top-level entry the parent of the branch it had just left.
+            while parent_stack and parent_stack[-1][1] > leading_spaces:
+                parent_stack.pop()
 
-            if leading_spaces < previous_level: # next parent
-                parent = parent_stack.pop()[0]
-                if not len(parent_stack):
-                    parent = None
+            if leading_spaces > previous_level and previous_parent:
+                parent_stack.append([previous_parent, leading_spaces])
 
-            if leading_spaces > previous_level:
-                if previous_parent:
-                    parent_stack.append([previous_parent, leading_spaces])
-                    parent = previous_parent
+            parent = parent_stack[-1][0] if parent_stack else None
 
             navigation_structure[key] = [parent, level, False]
             if parent:
@@ -487,7 +510,7 @@ def get_navigation_structure_from_sidebar(sidebar_fn:str):
             previous_parent = [key,raw_key]
             previous_level = leading_spaces
 
-    return navigation_structure
+    return navigation_structure, sections
 
 def generate_sitemap(output_fn):
     site_html_files = sorted(glob.glob(f"{OUT_ROOT}/**/*.html", recursive=True))
@@ -591,7 +614,7 @@ def collect_last_modified(wiki_dir:str) -> dict:
     return result
 
 def collect_site_dicts(site_name:str):
-    # returns (wiki_md_files, wiki_file_dict, wiki_image_dict, navigation_structure)
+    # returns (wiki_md_files, wiki_file_dict, wiki_image_dict, navigation_structure, sections)
     wiki_dir = f"wikis/{site_name}"
 
     wiki_image_dict = {}
@@ -608,26 +631,36 @@ def collect_site_dicts(site_name:str):
             wiki_image_dict[name.lower()] = file
 
     wiki_file_dict = {}
-    navigation_structure = {}
+    navigation_structure, sections = {}, {}
     wiki_md_files = glob.glob(f"{wiki_dir}/**/*.md", recursive=True)
+
+    # A site may keep its own page tree here, in the same syntax as a wiki _Sidebar.md. The
+    # wiki then stays exactly as its authors left it, while geodms.nl can group the pages the
+    # way a reader of the website needs them.
+    nav_override = f"{NAV_DIR}/{site_name}.md"
+    if os.path.isfile(nav_override):
+        navigation_structure, sections = get_navigation_structure_from_sidebar(nav_override)
+        print(f"{site_name}: page tree from {nav_override}, not from the wiki sidebar")
+
     for file in wiki_md_files:
         base_name, name, dir_name = make_key_from_md_filename(file)
         wiki_file_dict[name] = file
 
         if "_Sidebar" in file:
-            navigation_structure = get_navigation_structure_from_sidebar(file)
+            if not navigation_structure:
+                navigation_structure, sections = get_navigation_structure_from_sidebar(file)
             continue
 
         if "_Footer" in file:
             continue
 
-    return (wiki_md_files, wiki_file_dict, wiki_image_dict, navigation_structure)
+    return (wiki_md_files, wiki_file_dict, wiki_image_dict, navigation_structure, sections)
 
 def build_site(site_name:str, dicts_by_site:dict, run_jekyll:bool=True):
     site = SITES[site_name]
     baseurl = site["baseurl"]
     wiki_dir = f"wikis/{site_name}"
-    wiki_md_files, wiki_file_dict, wiki_image_dict, navigation_structure = dicts_by_site[site_name]
+    wiki_md_files, wiki_file_dict, wiki_image_dict, navigation_structure, sections = dicts_by_site[site_name]
     all_file_dicts = {name: dicts[1] for name, dicts in dicts_by_site.items()}
 
     # reset the generated template inputs of the previous site
@@ -663,6 +696,21 @@ def build_site(site_name:str, dicts_by_site:dict, run_jekyll:bool=True):
         record["lastmod"] = last_modified.get(rel_source)
         record["site"] = site_name
         pages.append(record)
+
+    # A grouping heading has no wiki page behind it, so write a stub for it. just-the-docs
+    # needs a real page to hang children from, and it fills the body with the list of them.
+    for key, title in sections.items():
+        if key in wiki_file_dict:
+            sys.exit(f"{site_name}: the heading '{title}' has the same name as a wiki page; "
+                     f"rename the heading, a stub would overwrite {wiki_file_dict[key]}")
+        parent, level, has_children = navigation_structure[key]
+        header = generate_md_header(title, key, nav_parent_title(parent, wiki_file_dict),
+                                    level, has_children, True)
+        with open(f"{TEMPLATE_DIR}/docs/{key}.md", "w", encoding="utf-8") as fn:
+            fn.write(f"{header}# **{title}**\n")
+        pages.append({"key": key, "title": title, "description": "",
+                      "url": f"{SITE_URL}{baseurl}/docs/{urllib.parse.quote(key)}.html",
+                      "lastmod": None, "site": site_name})
 
     # serve the downloaded github-hosted images from our own assets folder
     if os.path.isdir(EXTERNAL_IMAGE_DIR):

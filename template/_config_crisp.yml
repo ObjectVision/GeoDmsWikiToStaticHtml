@@ -7,8 +7,3 @@ keep_files: [".git"]
 aux_links:
   CRISP on Github: https://github.com/ObjectVision/CRISP
 
-nav_external_links:
-  - title: GeoDMS documentation
-    url: https://www.geodms.nl
-    hide_icon: false
-    opens_in_new_tab: false

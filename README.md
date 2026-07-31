@@ -63,6 +63,22 @@ To upload a locally built site to the webserver, store a WinSCP site with the ft
 .\deploy_local_winscp.ps1 -Site "<stored WinSCP site name>"
 ```
 
+# The page tree in the left column
+
+By default the left column follows the wiki's own `_Sidebar.md`. A site can override that with
+`nav/<site>.md` in this repo, in exactly the same syntax. The wiki then stays as its authors
+left it, while the website groups the pages the way a reader of the website needs them;
+`nav/geodms.md` does this for the main site. Delete the file and the wiki sidebar takes over
+again.
+
+A list item that is plain text rather than a link becomes a section: the converter writes a
+stub page for it and just-the-docs fills that page with the list of its children. That is how
+`Getting started`, `Reference` and `Development` exist without a wiki page behind them.
+
+Pages that are not in the tree are still built, still reachable by url and still in the search
+index; they only stay out of the menu. So a new wiki page has to be added to the tree to
+appear in the left column.
+
 # Notes
 - Images pasted directly into the github wiki editor end up on github's attachment CDN instead of in the wiki's `images/` folder. The converter downloads those (cached in `_external_images/`) and serves them from `assets/img/external/`, so the site stays self-contained, leaks no visitor data to github, and can run a strict `img-src` policy. A download failure is reported and leaves the github url in place.
 - After every deploy the workflow notifies [IndexNow](https://www.indexnow.org/) of the pages whose wiki source changed in the last two days, which reaches Bing, Yandex, Seznam and Naver without needing an account (Google ignores IndexNow; it uses the sitemap). Run the workflow with *indexnow_all* to submit every page once. The key in `INDEXNOW_KEY` is public by design and is served from the site root.
