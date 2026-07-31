@@ -1,7 +1,6 @@
 // Structural work on top of the variables in _sass/color_schemes/wider.scss.
-// Everything here exists because the theme has no variable for it.
-
-$ov-bar: 3.35rem; // height of the masthead
+// Everything here exists because the theme has no variable for it. The $ov-* palette and
+// $ov-bar come from custom/setup.scss, which is imported before every colour scheme.
 
 // ---------------------------------------------------------------- masthead
 // Fixed, full width, above both columns. The page tree stays where a page tree belongs, in

@@ -1,0 +1,17 @@
+// The house palette, in the one file every stylesheet sees.
+//
+// just-the-docs builds three entry points, just-the-docs-default/-dark/-light.scss, and all
+// three import custom/setup before their colour scheme and custom/custom after it. The
+// colour scheme file is not shared: -dark imports color_schemes/dark, so anything defined
+// only in wider.scss is undefined by the time custom.scss is compiled for that variant.
+// Hence: palette here, theme variables in wider.scss, rules in custom.scss.
+
+// from objectvision.nl: paper, ink, and brick for the accent
+$ov-ground: #f1f4f2;
+$ov-sheet: #e7ece9;
+$ov-ink: #141f1b;
+$ov-mut: #5a6b64;
+$ov-line: #ccd6d1;
+$ov-urban: #b4472f;
+
+$ov-bar: 3.35rem; // height of the masthead
