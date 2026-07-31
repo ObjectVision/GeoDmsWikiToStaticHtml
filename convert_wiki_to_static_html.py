@@ -310,7 +310,9 @@ def generate_md_header(base_name:str, name:str, parent_title:str, level:int, has
     if parent_title:
         header += f"parent: {parent_title}\n"
 
-    if not is_in_navigation and not "home" in name:
+    # the landing page is reached from the site name above the tree, so it does not need a
+    # line of its own in it as well
+    if name == "home" or not is_in_navigation:
         header += "nav_exclude: true\n"
     else:
         header += f"nav_order: {level}\n"
@@ -320,9 +322,29 @@ def generate_md_header(base_name:str, name:str, parent_title:str, level:int, has
 
     return header
 
-def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navigation_structure, baseurl="", all_file_dicts=None):
+def read_site_title(site_name:str) -> str:
+    # the per-site overlay wins, e.g. "RSopen (RuimteScanner)" over the plain "GeoDMS"
+    for config in (f"{TEMPLATE_DIR}/_config_{site_name}.yml", f"{TEMPLATE_DIR}/_config.yml"):
+        if not os.path.isfile(config):
+            continue
+        with open(config, encoding="utf-8") as fn:
+            match = re.search(r"^title:\s*(.+?)\s*$", fn.read(), re.M)
+        if match:
+            return match.group(1).strip('"\'')
+    return ""
+
+
+def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navigation_structure, baseurl="", all_file_dicts=None, site_title=""):
     base_name, name, dir_name = make_key_from_md_filename(md_fn_raw)
     display_name = base_name.replace("-", " ")
+
+    # A github wiki has to call its landing page Home, which is a name for the file and not
+    # for the page. On the site it is the site itself: that is the better <title> in a search
+    # result, and it keeps "Home" out of the left column, where the heading above the tree
+    # already links there.
+    if name == "home" and site_title:
+        display_name = site_title
+
     is_in_navigation = name in navigation_structure
     parent, level, has_children = ["", 0, False]
     if (is_in_navigation):
@@ -381,7 +403,7 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
             else:
                 print(f"{link} {key} {md_fn_raw} is not in dict")
     description = extract_description(cleaned_text)
-    header = generate_md_header(base_name, name, nav_parent_title(parent, wiki_file_dict),
+    header = generate_md_header(display_name, name, nav_parent_title(parent, wiki_file_dict),
                                 level, has_children, is_in_navigation, description)
     # The page title is added as the h1, except when the wiki page already opens with one:
     # the RSopen home page did, and ended up with "Home" above "RSopen (RuimteScanner 2.0)".
@@ -679,9 +701,10 @@ def build_site(site_name:str, dicts_by_site:dict, run_jekyll:bool=True):
     # convert links in each file, collecting page records for sitemap.xml/llms.txt.
     # downloaded external images are copied in afterwards, once they are all known.
     last_modified = collect_last_modified(wiki_dir)
+    site_title = read_site_title(site_name)
     pages = []
     for file in wiki_md_files:
-        record = clean_md_file(file, f"{TEMPLATE_DIR}/docs", wiki_file_dict, wiki_image_dict, navigation_structure, baseurl, all_file_dicts)
+        record = clean_md_file(file, f"{TEMPLATE_DIR}/docs", wiki_file_dict, wiki_image_dict, navigation_structure, baseurl, all_file_dicts, site_title)
         is_home = "home" in record["output_filename"]
         if is_home:
             shutil.move(record["output_filename"], f"{TEMPLATE_DIR}/index.md")
