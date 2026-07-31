@@ -1,1 +1,46 @@
-$content-width: 1000;
+// geodms.nl in the same visual language as objectvision.nl.
+//
+// Colours and type live here rather than in custom.scss on purpose. A colour scheme is
+// imported after just-the-docs' own light scheme but before its component styles, so setting
+// the theme's variables restyles every component at once instead of overriding each one
+// afterwards. Structural work that has no variable for it goes in custom/custom.scss.
+
+// the land-use palette from objectvision.nl: paper, ink, and brick for the accent
+$ov-ground: #f1f4f2;
+$ov-sheet: #e7ece9;
+$ov-ink: #141f1b;
+$ov-mut: #5a6b64;
+$ov-line: #ccd6d1;
+$ov-urban: #b4472f;
+
+$color-scheme: light;
+
+$body-background-color: $ov-ground;
+$sidebar-color: $ov-ground; // the same paper as the page: a seam, not a frame
+$search-background-color: #ffffff;
+$table-background-color: #ffffff;
+$code-background-color: $ov-sheet;
+$feedback-color: $ov-sheet;
+$base-button-color: $ov-sheet;
+$btn-primary-color: $ov-urban;
+
+$body-text-color: $ov-ink;
+$body-heading-color: $ov-ink;
+$nav-child-link-color: $ov-mut;
+$search-result-preview-color: $ov-mut;
+$link-color: $ov-urban;
+$border-color: $ov-line;
+
+$body-font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", arial, sans-serif;
+$mono-font-family: consolas, "Cascadia Mono", "SFMono-Regular", menlo, monospace;
+$body-line-height: 1.5;
+$content-line-height: 1.62;
+$body-heading-line-height: 1.2;
+$border-radius: 0; // square corners, like the rest of the house style
+
+// Wide enough for the operator tables, and an actual length. It used to be the unitless
+// `1000`, which is not valid css, so the max-width rule it fed was dropped altogether and the
+// text ran the full width of the window.
+$content-width: 62rem;
+$nav-width: 17.5rem;
+$nav-width-md: 16.5rem;

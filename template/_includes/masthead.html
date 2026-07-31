@@ -1,0 +1,27 @@
+{%- comment -%}
+  The bar across the top of every page on geodms.nl, in the same shape as the one on
+  objectvision.nl. It names the platform and switches between the documentation sites; the
+  left column below it stays the page tree of whichever site you are in.
+
+  site.site_prefix is empty on the real site and "/new" on a preview build, so the bar keeps
+  you inside the preview instead of jumping to the live site.
+{%- endcomment -%}
+{%- assign root = site.site_prefix | default: "" -%}
+{%- assign here = site.baseurl | default: "" -%}
+{%- assign at_rsopen = root | append: "/rsopen" -%}
+{%- assign at_academy = root | append: "/academy" -%}
+{%- assign at_network = root | append: "/networkmodel_pbl" -%}
+{%- assign at_crisp = root | append: "/crisp" -%}
+<header class="ov-masthead">
+  <div class="ov-masthead-inner">
+    <a class="ov-logo" href="{{ root }}/">Geo<span>DMS</span></a>
+    <nav class="ov-nav" aria-label="Documentation sites">
+      <a href="{{ root }}/"{% if here == root %} class="on" aria-current="true"{% endif %}>Documentation</a>
+      <a href="{{ root }}/academy/"{% if here == at_academy %} class="on" aria-current="true"{% endif %}>Academy</a>
+      <a href="{{ root }}/rsopen/"{% if here == at_rsopen %} class="on" aria-current="true"{% endif %}>RSopen</a>
+      <a href="{{ root }}/networkmodel_pbl/"{% if here == at_network %} class="on" aria-current="true"{% endif %}>NetworkModel</a>
+      <a href="{{ root }}/crisp/"{% if here == at_crisp %} class="on" aria-current="true"{% endif %}>CRISP</a>
+      <a class="ov-out" href="https://www.objectvision.nl">Object Vision</a>
+    </nav>
+  </div>
+</header>

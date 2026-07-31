@@ -1,3 +1,111 @@
+// Structural work on top of the variables in _sass/color_schemes/wider.scss.
+// Everything here exists because the theme has no variable for it.
+
+$ov-bar: 3.35rem; // height of the masthead
+
+// ---------------------------------------------------------------- masthead
+// Fixed, full width, above both columns. The page tree stays where a page tree belongs, in
+// the left column, but the site now has one bar across the top that says where you are and
+// lets you move between the documentation sites.
+
+.ov-masthead {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 200;
+  height: $ov-bar;
+  background-color: $ov-ground;
+  border-bottom: 1px solid $ov-ink;
+}
+
+.ov-masthead-inner {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  height: 100%;
+  max-width: 92rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.ov-logo {
+  margin-right: auto;
+  color: $ov-ink;
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-decoration: none;
+  white-space: nowrap;
+
+  span {
+    color: $ov-urban;
+  }
+
+  &:hover {
+    color: $ov-urban;
+  }
+}
+
+.ov-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.15rem;
+
+  a {
+    padding-bottom: 0.15rem;
+    color: $ov-mut;
+    font-size: 0.85rem;
+    text-decoration: none;
+    white-space: nowrap;
+    border-bottom: 1.5px solid transparent;
+
+    &:hover,
+    &:focus-visible {
+      color: $ov-urban;
+      border-bottom-color: $ov-urban;
+    }
+
+    &.on {
+      color: $ov-ink;
+      border-bottom-color: $ov-ink;
+    }
+  }
+}
+
+.ov-out::before {
+  margin-right: 1.1rem;
+  color: $ov-line;
+  content: "|";
+}
+
+// the whole document drops below the bar; the sidebar is fixed, so it is offset separately
+body {
+  padding-top: $ov-bar;
+}
+
+@media (max-width: 40rem) {
+  .ov-logo {
+    font-size: 0.95rem;
+  }
+
+  .ov-nav {
+    gap: 0.8rem;
+
+    a {
+      font-size: 0.78rem;
+    }
+  }
+
+  .ov-out::before {
+    display: none;
+  }
+}
+
+// ---------------------------------------------------------------- the left column
+// Same paper as the page and a hairline instead of a heavy edge, so the two columns read as
+// one sheet rather than as two frames.
+
 .side-bar {
   z-index: 0;
   display: flex;
@@ -5,16 +113,250 @@
   background-color: $sidebar-color;
 
   @include mq(md) {
+    top: $ov-bar;
     flex-flow: column nowrap;
-    position: fixed;
-    width: $nav-width-md;
-    height: 100%;
-    border-right: $border $border-color;
     align-items: flex-end;
+    width: $nav-width-md;
+    height: calc(100% - #{$ov-bar});
+    border-right: 1px solid $border-color;
   }
 
   @include mq(lg) {
     width: calc((100% - #{$nav-width + $content-width}) / 20 + #{$nav-width});
     min-width: $nav-width;
   }
+}
+
+.site-header {
+  border-bottom: 1px solid $border-color;
+}
+
+.site-title {
+  color: $ov-ink;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+
+  &:hover {
+    color: $ov-urban;
+    background-image: none;
+  }
+}
+
+.site-footer {
+  color: $ov-mut;
+  font-size: 0.72rem;
+}
+
+// navigation: quiet by default, ink and a rule for where you are
+.nav-list {
+  .nav-list-item {
+    font-size: 0.86rem;
+
+    @include mq(md) {
+      font-size: 0.84rem;
+    }
+  }
+
+  .nav-list-link {
+    color: $ov-mut;
+
+    &:hover {
+      color: $ov-urban;
+    }
+
+    &.active {
+      color: $ov-ink;
+      font-weight: 600;
+    }
+  }
+}
+
+// ---------------------------------------------------------------- the content column
+
+.main-header {
+  background-color: $ov-ground;
+  border-bottom: 1px solid $border-color;
+}
+
+.main-content-wrap {
+  @include mq(md) {
+    padding-top: 1.6rem;
+  }
+}
+
+.main-content {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    position: relative;
+  }
+
+  h1 {
+    margin-bottom: 1.1rem;
+    font-size: 1.9rem !important;
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+
+  h2 {
+    margin-top: 2.4rem;
+    padding-top: 0.9rem;
+    font-size: 1.28rem !important;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    border-top: 1px solid $ov-ink;
+  }
+
+  // the small mono heading from the house style; it reads as a label rather than as a title
+  h3 {
+    margin-top: 1.9rem;
+    color: $ov-urban;
+    font-family: $mono-font-family;
+    font-size: 0.76rem !important;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  h4 {
+    color: $ov-ink;
+    font-size: 0.95rem !important;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  // the permalink anchors are excluded by name: a :not() that loses on specificity leaves
+  // them wearing a link underline, which reads as a stray dash beside every heading
+  a:not(.btn):not(.anchor-heading) {
+    color: $ov-urban;
+    text-decoration: none;
+    border-bottom: 1px solid $border-color;
+
+    &:hover,
+    &:focus-visible {
+      border-bottom-color: $ov-urban;
+      background-image: none;
+    }
+  }
+
+  // the permalink icon beside a heading belongs to whoever is looking for it, not to
+  // everyone reading the page
+  .anchor-heading {
+    border-bottom: 0;
+
+    svg {
+      color: $ov-mut;
+      visibility: hidden;
+    }
+  }
+
+  h1:hover > .anchor-heading svg,
+  h2:hover > .anchor-heading svg,
+  h3:hover > .anchor-heading svg,
+  h4:hover > .anchor-heading svg,
+  h5:hover > .anchor-heading svg,
+  h6:hover > .anchor-heading svg,
+  .anchor-heading:hover svg,
+  .anchor-heading:focus svg {
+    visibility: visible;
+  }
+
+  li::marker {
+    color: $ov-urban;
+  }
+
+  blockquote {
+    margin: 1.4rem 0;
+    padding-left: 1.1rem;
+    color: $ov-mut;
+    border-left: 2px solid $ov-urban;
+  }
+
+  img {
+    border: 1px solid $border-color;
+  }
+
+  hr {
+    border-top: 1px solid $ov-ink;
+  }
+
+  // tables carry a lot of this documentation; hairlines and tabular numerals suit them
+  table {
+    font-size: 0.88rem;
+    font-variant-numeric: tabular-nums;
+    border-collapse: collapse;
+    box-shadow: none;
+
+    th,
+    td {
+      border-right: 0;
+      border-left: 0;
+      border-bottom: 1px solid $border-color;
+    }
+
+    thead th {
+      color: $ov-mut;
+      font-family: $mono-font-family;
+      font-size: 0.7rem;
+      font-weight: 400;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      border-bottom: 1px solid $ov-ink;
+    }
+  }
+
+  code {
+    background-color: $ov-sheet;
+  }
+
+  div.highlighter-rouge,
+  pre.highlight {
+    background-color: $ov-sheet;
+    border: 1px solid $border-color;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+// ---------------------------------------------------------------- search and footer
+
+.search-input-wrap {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.search-input {
+  background-color: transparent;
+
+  &::placeholder {
+    color: $ov-mut;
+  }
+}
+
+.search-result {
+  &:hover,
+  &.active {
+    background-color: $ov-sheet;
+  }
+}
+
+.site-footer,
+.main-content .site-footer {
+  color: $ov-mut;
+}
+
+#main-content + .site-footer,
+.main-content-wrap .site-footer {
+  margin-top: 2.6rem;
+  padding-top: 1.2rem;
+  color: $ov-mut;
+  font-size: 0.78rem;
+  border-top: 1px solid $ov-ink;
 }

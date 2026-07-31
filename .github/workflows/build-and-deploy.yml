@@ -27,6 +27,10 @@ on:
         description: "Build only: upload the site as an artifact, do not deploy"
         type: boolean
         default: false
+      preview:
+        description: "Deploy to geodms.nl/new/ instead of the live site (noindex, no sitemap)"
+        type: boolean
+        default: false
       indexnow_all:
         description: "Submit every page to IndexNow, not just recently changed ones"
         type: boolean
@@ -62,7 +66,7 @@ jobs:
           bundler-cache: true # bundle install + cache, driven by template/Gemfile.lock
 
       - name: Convert wikis to static html
-        run: python convert_wiki_to_static_html.py ${{ inputs.indexnow_all && '--indexnow-all' || '' }}
+        run: python convert_wiki_to_static_html.py ${{ inputs.preview && '--preview new' || '' }} ${{ inputs.indexnow_all && '--indexnow-all' || '' }}
 
       - name: Upload site as artifact (dry run)
         if: inputs.dry_run
@@ -72,7 +76,7 @@ jobs:
           path: _out/
 
       - name: Deploy to geodms.nl
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && !inputs.preview }}
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -82,11 +86,24 @@ jobs:
           local-dir: _out/
           server-dir: ${{ vars.FTP_SERVER_DIR || 'public_html/' }}
 
+      # The preview goes into its own directory and touches nothing else on the server, so a
+      # redesign can be judged on the real thing before it replaces it.
+      - name: Deploy preview to geodms.nl/new/
+        if: ${{ !inputs.dry_run && inputs.preview }}
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: _out/new/
+          server-dir: ${{ vars.FTP_SERVER_DIR || 'public_html/' }}new/
+
       # Tell Bing (and Yandex, Seznam, Naver) which pages changed. No account needed:
       # ownership is proven by the key file that was just deployed to the site root.
       # Runs after the deploy on purpose, so the urls are live before we announce them.
       - name: Notify IndexNow of changed pages
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && !inputs.preview }}
         shell: bash
         run: |
           count=$(python -c "import json; print(len(json.load(open('indexnow-payload.json'))['urlList']))")

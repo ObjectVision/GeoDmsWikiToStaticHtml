@@ -4,3 +4,11 @@
   {% when "mathjax" %}
     {% include mathjax.html %}
 {% endcase %}
+
+{%- comment -%}
+  A preview build lives under /new/ on the same domain as the real site. robots.txt only
+  works from the domain root, so the preview keeps itself out of the index per page.
+{%- endcomment -%}
+{% if site.preview %}
+<meta name="robots" content="noindex, nofollow">
+{% endif %}
