@@ -227,6 +227,24 @@ def insert_blank_line_before_tables(text:str) -> str:
         out.append(line)
     return "\n".join(out)
 
+# <details> or <details class="x">, unless it already says markdown=, optionally followed by
+# its <summary> on the same line
+DETAILS_RE = re.compile(r"<details(?![^>]*\bmarkdown=)([^>]*)>[ \t]*(<summary\b[^>]*>.*?</summary>)?",
+                        re.IGNORECASE | re.DOTALL)
+
+
+def enable_markdown_in_details(text:str) -> str:
+    # Same problem as the tables above: github renders the markdown inside a <details> block,
+    # kramdown treats a block-level html element as raw html and passes its content straight
+    # through, so bullets, bold and links come out as literal asterisks and brackets on one
+    # long line. markdown="1" tells kramdown to parse the contents after all. The <summary>
+    # moves to its own line, because what kramdown parses is what follows the opening tag.
+    def replace(match):
+        opening = f'<details markdown="1"{match.group(1)}>'
+        return f"{opening}\n{match.group(2)}" if match.group(2) else opening
+    return DETAILS_RE.sub(replace, text)
+
+
 def rmtree_force(path):
     # git clones contain read-only files that a plain rmtree cannot delete on Windows
     def make_writable(func, p, exc_info):
@@ -359,6 +377,7 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
         text = fn.read()
 
         cleaned_text = insert_blank_line_before_tables(text)
+        cleaned_text = enable_markdown_in_details(cleaned_text)
         cleaned_text = localize_external_images(cleaned_text, baseurl)
         if all_file_dicts:
             cleaned_text = rewrite_cross_wiki_links(cleaned_text, all_file_dicts)
