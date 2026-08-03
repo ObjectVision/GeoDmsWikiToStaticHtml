@@ -85,10 +85,15 @@ Github Actions, `.github/workflows/build-and-deploy.yml`: nightly, on a wiki-upd
 dispatch, or manually. Manual runs take *preview* (deploys to geodms.nl/new/, marked noindex,
 no sitemap and no IndexNow) and *dry_run* (artifact only).
 
-If the FTP step fails with `ETIMEDOUT` on port 21 while the build itself succeeded, the
-webserver is refusing that runner, not misconfigured. It has happened after a large upload and
-cleared by itself. `deploy_local_winscp.ps1` is the fallback: run the workflow with *preview*
-and *dry_run*, unpack the artifact into `_out/` and upload from a machine that is not blocked.
+The deploy step is tried up to three times, with a wait in between. The webserver refuses the
+connection outright now and then: `ETIMEDOUT` on the control socket while the build itself
+succeeded and the same host answers from a home connection. It follows large uploads and a
+later run of exactly the same job goes through, which points at the host rate limiting an
+address that opens a few thousand ftp connections in a row. The objectvision.nl site sits on
+the same server and never sees it, and it uploads thirty files rather than five thousand.
+
+If all three attempts fail, `deploy_local_winscp.ps1` is the fallback: run the workflow with
+*dry_run*, unpack the artifact into `_out/` and upload from a machine that is not blocked.
 
 ## Git
 

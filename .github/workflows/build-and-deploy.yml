@@ -51,7 +51,12 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
+    env:
+      # one place to decide where this run publishes, so the deploy itself is a single step
+      # that can be retried rather than two that both would have to be
+      LOCAL_DIR: ${{ inputs.preview && '_out/new/' || '_out/' }}
+      SERVER_DIR: ${{ inputs.preview && format('{0}new/', vars.FTP_SERVER_DIR || 'public_html/') || (vars.FTP_SERVER_DIR || 'public_html/') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -75,35 +80,78 @@ jobs:
           name: geodms.nl-site
           path: _out/
 
-      - name: Deploy to geodms.nl
-        if: ${{ !inputs.dry_run && !inputs.preview }}
+      # The webserver refuses the connection outright now and then: the control socket times
+      # out on port 21 while the same host answers from elsewhere, and a later run of exactly
+      # the same job goes through. It follows large uploads, so it looks like the host rate
+      # limits or blocks an address that opens a few thousand ftp connections in a row, which
+      # is what an upload of five sites is. Until that is settled with the hosting party, the
+      # deploy simply tries again after a wait. With preview, this publishes to
+      # geodms.nl/new/, which touches nothing else on the server.
+      - name: Deploy to geodms.nl (attempt 1)
+        id: deploy1
+        if: ${{ !inputs.dry_run }}
+        continue-on-error: true
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
-          local-dir: _out/
-          server-dir: ${{ vars.FTP_SERVER_DIR || 'public_html/' }}
+          local-dir: ${{ env.LOCAL_DIR }}
+          server-dir: ${{ env.SERVER_DIR }}
 
-      # The preview goes into its own directory and touches nothing else on the server, so a
-      # redesign can be judged on the real thing before it replaces it.
-      - name: Deploy preview to geodms.nl/new/
-        if: ${{ !inputs.dry_run && inputs.preview }}
+      - name: Wait, then try again
+        if: ${{ !inputs.dry_run && steps.deploy1.outcome == 'failure' }}
+        shell: bash
+        run: sleep 180
+
+      - name: Deploy to geodms.nl (attempt 2)
+        id: deploy2
+        if: ${{ !inputs.dry_run && steps.deploy1.outcome == 'failure' }}
+        continue-on-error: true
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
-          local-dir: _out/new/
-          server-dir: ${{ vars.FTP_SERVER_DIR || 'public_html/' }}new/
+          local-dir: ${{ env.LOCAL_DIR }}
+          server-dir: ${{ env.SERVER_DIR }}
+
+      - name: Wait longer, then try once more
+        if: ${{ !inputs.dry_run && steps.deploy2.outcome == 'failure' }}
+        shell: bash
+        run: sleep 600
+
+      - name: Deploy to geodms.nl (attempt 3)
+        id: deploy3
+        if: ${{ !inputs.dry_run && steps.deploy2.outcome == 'failure' }}
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ${{ env.LOCAL_DIR }}
+          server-dir: ${{ env.SERVER_DIR }}
+
+      - name: Say how many attempts it took
+        if: ${{ success() && !inputs.dry_run && steps.deploy1.outcome == 'failure' }}
+        shell: bash
+        run: |
+          if [ "${{ steps.deploy2.outcome }}" = "success" ]; then
+            echo "::warning::The first deploy attempt was refused; the second went through."
+          else
+            echo "::warning::The first two deploy attempts were refused; the third went through."
+          fi
 
       # Tell Bing (and Yandex, Seznam, Naver) which pages changed. No account needed:
       # ownership is proven by the key file that was just deployed to the site root.
       # Runs after the deploy on purpose, so the urls are live before we announce them.
+      # success() is spelled out: a failed deploy must not announce urls that were never
+      # published, and an explicit condition is easier to trust than an implicit one
       - name: Notify IndexNow of changed pages
-        if: ${{ !inputs.dry_run && !inputs.preview }}
+        if: ${{ success() && !inputs.dry_run && !inputs.preview }}
         shell: bash
         run: |
           count=$(python -c "import json; print(len(json.load(open('indexnow-payload.json'))['urlList']))")
