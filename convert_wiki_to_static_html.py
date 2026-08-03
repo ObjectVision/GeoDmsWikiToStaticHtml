@@ -599,9 +599,13 @@ def generate_indexnow(pages, out_root:str, changed_within_days:int, submit_all:b
     print(f"indexnow: {len(urls)} url(s) queued in {INDEXNOW_PAYLOAD_FILE}")
 
 def generate_security_txt(output_fn):
-    # https://www.rfc-editor.org/rfc/rfc9116 — Expires is mandatory; it is refreshed on
-    # every build, so it cannot go stale while the site is still being rebuilt.
-    expires = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(days=365)
+    # https://www.rfc-editor.org/rfc/rfc9116 — Expires is mandatory and should be under a
+    # year away. Pinned to the first of this month next year rather than to now plus 365
+    # days: the date then only moves once a month instead of every build, and a day on which
+    # no wiki page changed uploads nothing at all. It cannot go stale while the site is still
+    # being rebuilt either way.
+    now = datetime.now(timezone.utc)
+    expires = datetime(now.year + 1, now.month, 1, tzinfo=timezone.utc)
     os.makedirs(os.path.dirname(output_fn), exist_ok=True)
     with open(output_fn, "w", encoding="utf-8") as fn:
         for contact in SECURITY_CONTACTS:
