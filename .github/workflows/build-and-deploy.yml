@@ -51,7 +51,7 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 90 # the deploy can spend three quarters of an hour waiting out a block
     env:
       # one place to decide where this run publishes, so the deploy itself is a single step
       # that can be retried rather than two that both would have to be
@@ -81,12 +81,18 @@ jobs:
           path: _out/
 
       # The webserver refuses the connection outright now and then: the control socket times
-      # out on port 21 while the same host answers from elsewhere, and a later run of exactly
-      # the same job goes through. It follows large uploads, so it looks like the host rate
-      # limits or blocks an address that opens a few thousand ftp connections in a row, which
-      # is what an upload of five sites is. Until that is settled with the hosting party, the
-      # deploy simply tries again after a wait. With preview, this publishes to
-      # geodms.nl/new/, which touches nothing else on the server.
+      # out on port 21 while the same host answers from a home connection, and a later run of
+      # exactly the same job goes through. It follows large uploads, so it looks like the host
+      # rate limits an address that opens a few thousand ftp connections in a row, which is
+      # what publishing five sites after a template change is.
+      #
+      # Observed blocks have lasted from a few minutes to about forty, so the deploy tries at
+      # 0, 5, 20 and 45 minutes before giving up. It is a symptom fix. The real one is with
+      # the hosting party, and the better one is a transfer that opens a single connection
+      # rather than one per file: port 22 is open on that host, so sftp or rsync over ssh is
+      # worth asking for.
+      #
+      # With preview, this publishes to geodms.nl/new/, which touches nothing else.
       - name: Deploy to geodms.nl (attempt 1)
         id: deploy1
         if: ${{ !inputs.dry_run }}
@@ -103,7 +109,7 @@ jobs:
       - name: Wait, then try again
         if: ${{ !inputs.dry_run && steps.deploy1.outcome == 'failure' }}
         shell: bash
-        run: sleep 180
+        run: sleep 300
 
       - name: Deploy to geodms.nl (attempt 2)
         id: deploy2
@@ -118,14 +124,32 @@ jobs:
           local-dir: ${{ env.LOCAL_DIR }}
           server-dir: ${{ env.SERVER_DIR }}
 
-      - name: Wait longer, then try once more
+      - name: Wait longer, then try again
         if: ${{ !inputs.dry_run && steps.deploy2.outcome == 'failure' }}
         shell: bash
-        run: sleep 600
+        run: sleep 900
 
       - name: Deploy to geodms.nl (attempt 3)
         id: deploy3
         if: ${{ !inputs.dry_run && steps.deploy2.outcome == 'failure' }}
+        continue-on-error: true
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ${{ env.LOCAL_DIR }}
+          server-dir: ${{ env.SERVER_DIR }}
+
+      - name: Wait once more, then try for the last time
+        if: ${{ !inputs.dry_run && steps.deploy3.outcome == 'failure' }}
+        shell: bash
+        run: sleep 1500
+
+      - name: Deploy to geodms.nl (attempt 4)
+        id: deploy4
+        if: ${{ !inputs.dry_run && steps.deploy3.outcome == 'failure' }}
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -139,11 +163,11 @@ jobs:
         if: ${{ success() && !inputs.dry_run && steps.deploy1.outcome == 'failure' }}
         shell: bash
         run: |
-          if [ "${{ steps.deploy2.outcome }}" = "success" ]; then
-            echo "::warning::The first deploy attempt was refused; the second went through."
-          else
-            echo "::warning::The first two deploy attempts were refused; the third went through."
+          if   [ "${{ steps.deploy2.outcome }}" = "success" ]; then n=2
+          elif [ "${{ steps.deploy3.outcome }}" = "success" ]; then n=3
+          else n=4
           fi
+          echo "::warning::The webserver refused the earlier attempts; the deploy went through on attempt $n."
 
       # Tell Bing (and Yandex, Seznam, Naver) which pages changed. No account needed:
       # ownership is proven by the key file that was just deployed to the site root.
