@@ -38,11 +38,11 @@
   white-space: nowrap;
 
   span {
-    color: $ov-urban;
+    color: $ov-accent;
   }
 
   &:hover {
-    color: $ov-urban;
+    color: $ov-accent;
   }
 }
 
@@ -61,8 +61,8 @@
 
     &:hover,
     &:focus-visible {
-      color: $ov-urban;
-      border-bottom-color: $ov-urban;
+      color: $ov-accent;
+      border-bottom-color: $ov-accent;
     }
 
     &.on {
@@ -137,7 +137,7 @@ body {
   letter-spacing: -0.02em;
 
   &:hover {
-    color: $ov-urban;
+    color: $ov-accent;
     background-image: none;
   }
 }
@@ -161,7 +161,7 @@ body {
     color: $ov-mut;
 
     &:hover {
-      color: $ov-urban;
+      color: $ov-accent;
     }
 
     &.active {
@@ -215,7 +215,7 @@ body {
   // the small mono heading from the house style; it reads as a label rather than as a title
   h3 {
     margin-top: 1.9rem;
-    color: $ov-urban;
+    color: $ov-accent;
     font-family: $mono-font-family;
     font-size: 0.76rem !important;
     font-weight: 400;
@@ -234,13 +234,13 @@ body {
   // the permalink anchors are excluded by name: a :not() that loses on specificity leaves
   // them wearing a link underline, which reads as a stray dash beside every heading
   a:not(.btn):not(.anchor-heading) {
-    color: $ov-urban;
+    color: $ov-accent;
     text-decoration: none;
     border-bottom: 1px solid $border-color;
 
     &:hover,
     &:focus-visible {
-      border-bottom-color: $ov-urban;
+      border-bottom-color: $ov-accent;
       background-image: none;
     }
   }
@@ -268,14 +268,14 @@ body {
   }
 
   li::marker {
-    color: $ov-urban;
+    color: $ov-accent;
   }
 
   blockquote {
     margin: 1.4rem 0;
     padding-left: 1.1rem;
     color: $ov-mut;
-    border-left: 2px solid $ov-urban;
+    border-left: 2px solid $ov-accent;
   }
 
   img {
