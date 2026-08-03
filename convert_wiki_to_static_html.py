@@ -58,6 +58,9 @@ OUT_ROOT = "_out"
 TEMPLATE_DIR = "template"
 NAV_DIR = "nav"  # optional per-site page tree, overriding the wiki's own _Sidebar.md
 
+# files that live in a wiki repository but are not pages of it, so they are not published
+NOT_A_PAGE = {"claude.md", "agents.md", "readme.md"}
+
 # Set by --preview: every site moves into that subdirectory of the domain, so a redesign can
 # be looked at on the real server without touching the live site. Empty for a real build.
 PREVIEW_PREFIX = ""
@@ -654,7 +657,8 @@ def collect_site_dicts(site_name:str):
 
     wiki_file_dict = {}
     navigation_structure, sections = {}, {}
-    wiki_md_files = glob.glob(f"{wiki_dir}/**/*.md", recursive=True)
+    wiki_md_files = [f for f in glob.glob(f"{wiki_dir}/**/*.md", recursive=True)
+                     if os.path.basename(f).lower() not in NOT_A_PAGE]
 
     # A site may keep its own page tree here, in the same syntax as a wiki _Sidebar.md. The
     # wiki then stays exactly as its authors left it, while geodms.nl can group the pages the
