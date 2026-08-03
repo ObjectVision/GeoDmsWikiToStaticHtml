@@ -87,4 +87,10 @@
   * [[Gui scripting]]
   * [[Full test]]
   * [[Release Testing System]]
-  * [[Projects]]
+
+<!-- The Projects page is deliberately not in this tree. It is now a signpost to
+     objectvision.nl/projects; it stays reachable by url so existing links keep working, but
+     it is not a place to send anyone browsing the documentation. Note that a wiki link
+     written in a comment here would still be picked up: the parser reads lines, not
+     markdown structure. -->
+
