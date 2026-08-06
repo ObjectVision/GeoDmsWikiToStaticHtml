@@ -156,6 +156,25 @@ def localize_external_images(text:str, baseurl:str) -> str:
 
     return EXTERNAL_IMAGE_RE.sub(replace, text)
 
+# Images committed to a wiki live in <wiki>/images/ and are copied to assets/img/, with the
+# whole tree lowercased. The pages point at them with a path relative to the wiki root,
+# ![](images/GUI/treeview.png), which a browser resolves against the page url instead: from
+# /docs/treeview.html that asks for /docs/images/GUI/treeview.png, which is not there. So the
+# path has to be rewritten to where the image is really served from.
+#
+# This is not an edge case. It is how every wiki image is written, in markdown and in the few
+# raw <img> tags; the [[images/...]] form that the wiki link rewriter below understands does
+# not occur in any of the wikis at all.
+WIKI_IMAGE_RE = re.compile(r'(!\[[^\]]*\]\(\s*|<img\b[^>]*?\bsrc=")(?:\./)?(images/[^)"\s]+)',
+                           re.IGNORECASE)
+
+
+def rewrite_wiki_image_paths(text: str, baseurl: str) -> str:
+    def replace(match):
+        path = match.group(2)[len("images/"):].lower()
+        return f"{match.group(1)}{baseurl}/assets/img/{path}"
+    return WIKI_IMAGE_RE.sub(replace, text)
+
 INLINE_MD_LINK_RE = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
 WIKI_MD_LINK_RE = re.compile(r"\[\[(?:([^\]|]*)\|)?([^\]]*)\]\]")
 HTML_TAG_RE = re.compile(r"<[^>]+>")
@@ -379,6 +398,7 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
         cleaned_text = insert_blank_line_before_tables(text)
         cleaned_text = enable_markdown_in_details(cleaned_text)
         cleaned_text = localize_external_images(cleaned_text, baseurl)
+        cleaned_text = rewrite_wiki_image_paths(cleaned_text, baseurl)
         if all_file_dicts:
             cleaned_text = rewrite_cross_wiki_links(cleaned_text, all_file_dicts)
 
