@@ -3,10 +3,12 @@ layout: table_wrappers
 ---
 
 {%- comment -%}
-  A copy of the just-the-docs 0.7.0 default layout with one addition: the masthead, before
+  A copy of the just-the-docs 0.12.0 default layout with one addition: the masthead, before
   the sidebar, so it spans the full width of the page. The theme has no include hook above
   the sidebar, so overriding the layout is the only place to put it. The version is pinned in
   the Gemfile; if that ever moves, re-check this file against the theme's own default layout.
+  The masthead goes before the whole sidebar block, not inside it: the theme's own rules put
+  the main column beside the sidebar with `.side-bar + .main`, so nothing may come between them.
 {%- endcomment -%}
 
 <!DOCTYPE html>
@@ -17,7 +19,13 @@ layout: table_wrappers
   <a class="skip-to-main" href="#main-content">Skip to main content</a>
   {% include icons/icons.html %}
   {% include masthead.html %}
-  {% include components/sidebar.html %}
+  {% if page.nav_enabled == true %}
+    {% include components/sidebar.html %}
+  {% elsif layout.nav_enabled == true and page.nav_enabled == nil %}
+    {% include components/sidebar.html %}
+  {% elsif site.nav_enabled != false and layout.nav_enabled == nil and page.nav_enabled == nil %}
+    {% include components/sidebar.html %}
+  {% endif %}
   <div class="main" id="top">
     {% include components/header.html %}
     <div class="main-content-wrap">
@@ -30,7 +38,7 @@ layout: table_wrappers
             {{ content }}
           {% endif %}
 
-          {% if page.has_children == true and page.has_toc != false %}
+          {% if page.has_toc != false %}
             {% include components/children_nav.html %}
           {% endif %}
         </main>

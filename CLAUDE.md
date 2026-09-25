@@ -61,13 +61,23 @@ Two things that bite:
   file name. A sidebar that writes `[[Data Source]]` for a page called `Data-source.md` used to
   drop that whole branch out of the menu without a word. `nav_parent_title()` handles this; if
   you touch it, check that every site still reports no orphans.
+- The tree may be as deep as it needs to be, because the converter writes only `parent:` and
+  just-the-docs 0.10 and later nest any number of levels on that alone, as long as titles are
+  unique within a site (they are: they come from file names). Up to 0.7.0 the theme showed at
+  most three levels, and the third only for pages that also carried `grand_parent:`. That hid
+  every third-level entry of `nav/geodms.md` on geodms.nl and left an empty "Table of
+  contents" at the foot of each page with such children; it is why the theme was upgraded.
 
 A list item that is plain text becomes a section, with a stub page generated for it, which is
 how `Getting started`, `Reference` and `Development` exist without a wiki page behind them.
 
 ## The theme
 
-just-the-docs 0.7.0, pinned in `template/Gemfile`. The look matches objectvision.nl.
+just-the-docs 0.12.0, pinned in `template/Gemfile` and `template/Gemfile.lock`. The look
+matches objectvision.nl. To move the pin, change only the theme's line in both files: the
+lockfile is resolved for the Windows platform of the workflow, and `bundle lock --update` on
+another machine also bumps jekyll-seo-tag, whose header comment `clean_html_file()` looks for
+by its version number.
 
 - `template/_sass/custom/setup.scss` — the palette. It lives here because **all three
   stylesheet variants** (`just-the-docs-default/-dark/-light.scss`) import `custom/custom.scss`
@@ -77,7 +87,10 @@ just-the-docs 0.7.0, pinned in `template/Gemfile`. The look matches objectvision
 - `template/_sass/color_schemes/wider.scss` — the theme's own variables.
 - `template/_sass/custom/custom.scss` — rules that have no variable.
 - `template/_layouts/default.html` — a copy of the theme's, with the masthead added, because
-  the theme has no include hook above the sidebar. Pinned to 0.7.0 along with the Gemfile.
+  the theme has no include hook above the sidebar. Pinned to 0.12.0 along with the Gemfile;
+  when the pin moves, copy the new version's layout and add the one masthead line again.
+- `template/assets/js/nav-scroll.js` — keeps the page tree at the top on load, where the theme
+  would scroll it to the current page even when that page was already in sight.
 
 ## Deploying
 
