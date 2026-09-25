@@ -61,6 +61,8 @@
     * [[Predicates|Predicates functions]]
     * [[Logical|Logical functions]]
     * [[Relational|Relational functions]]
+      * [[pareto_optimal]]
+      * [[pareto_optimal_eps]]
     * [[Selection|Selection functions]]
     * [[Rescale|Rescale functions]]
     * [[Constant|Constant functions]]
