@@ -1,7 +1,7 @@
 # Uploads a built site to the webserver with WinSCP, from this machine instead of from a
-# Github runner. Useful when the host is refusing connections from the runner: run the
-# workflow with both "preview" and "dry_run" ticked, download the artifact, unpack it into
-# _out\ and upload from here.
+# Github runner. Useful when the host refused every deploy attempt of a run: download that
+# run's artifact (geodms.nl-site), unpack it into _out\ and upload from here with -SkipBuild.
+# The artifact of a preview run holds the site in new\, see the last example.
 #
 # Credentials stay in WinSCP: create a stored site there (Session -> Save) and pass its name.
 # Nothing secret is stored in this script or in this repo.

@@ -83,17 +83,24 @@ just-the-docs 0.7.0, pinned in `template/Gemfile`. The look matches objectvision
 
 Github Actions, `.github/workflows/build-and-deploy.yml`: nightly, on a wiki-updated
 dispatch, or manually. Manual runs take *preview* (deploys to geodms.nl/new/, marked noindex,
-no sitemap and no IndexNow) and *dry_run* (artifact only).
+no sitemap and no IndexNow) and *dry_run* (build only).
 
-The deploy step is tried up to three times, with a wait in between. The webserver refuses the
-connection outright now and then: `ETIMEDOUT` on the control socket while the build itself
-succeeded and the same host answers from a home connection. It follows large uploads and a
-later run of exactly the same job goes through, which points at the host rate limiting an
-address that opens a few thousand ftp connections in a row. The objectvision.nl site sits on
-the same server and never sees it, and it uploads thirty files rather than five thousand.
+The build job keeps the site as an artifact of the run for a week, and the deploy is up to
+four jobs that each take it from there. The webserver refuses a deploy now and then:
+`ETIMEDOUT` on the ftp control connection, before a single file is sent, while the same host
+answers from an office connection. Waiting on the same runner almost never helps, for up to
+three quarters of an hour; a later run on a fresh runner gets through about half the time. So
+the refusal goes with the runner's address more than with the moment or the size of the
+upload, and every attempt is a job of its own, on a fresh runner. objectvision.nl deploys to
+the same server from the same kind of runner and is refused the same way.
 
-If all three attempts fail, `deploy_local_winscp.ps1` is the fallback: run the workflow with
-*dry_run*, unpack the artifact into `_out/` and upload from a machine that is not blocked.
+A refused attempt logs the runner's address and which of ports 21, 22 and 443 answered from
+it. That is what the hosting party needs to find the block, and it shows whether sftp on port
+22 would get around it.
+
+If all four attempts fail, the run fails and `deploy_local_winscp.ps1` is the fallback: unpack
+that run's artifact into `_out/` and upload with `-SkipBuild` from a machine that is not
+blocked.
 
 ## Git
 

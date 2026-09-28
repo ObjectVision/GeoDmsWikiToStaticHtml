@@ -42,6 +42,8 @@ One-time setup, in this repository under *Settings -> Secrets and variables -> A
 
 The deploy action ([SamKirkland/FTP-Deploy-Action](https://github.com/SamKirkland/FTP-Deploy-Action)) keeps a state file (`.ftp-deploy-sync-state.json`) on the server so subsequent deploys only transfer changed files. It never deletes files it did not upload itself, so hand-placed files (e.g. `.htaccess`, `robots.txt`) are left alone; pages removed from a wiki linger on the server until removed by hand.
 
+Every run keeps the built site as an artifact for a week. The webserver sometimes refuses the connection from a Github runner, so the deploy is tried up to four times, each attempt in a job of its own on a fresh runner; the comments in the workflow say why. If every attempt is refused, the run fails, and that run's artifact can be uploaded by hand with `deploy_local_winscp.ps1 -SkipBuild`.
+
 # Local usage
 Requirements: [Python](https://www.python.org/downloads/), [Ruby](https://jekyllrb.com/docs/installation/) and the Jekyll and Bundler gems (`gem install jekyll bundler`, then `bundle install` inside `template/`).
 
