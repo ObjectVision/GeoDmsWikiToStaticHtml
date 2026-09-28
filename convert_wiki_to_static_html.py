@@ -168,12 +168,27 @@ def localize_external_images(text:str, baseurl:str) -> str:
 WIKI_IMAGE_RE = re.compile(r'(!\[[^\]]*\]\(\s*|<img\b[^>]*?\bsrc=")(?:\./)?(images/[^)"\s]+)',
                            re.IGNORECASE)
 
+# An image can also be committed next to the pages instead of in images/: ![](plot.png), which
+# github finds in the wiki root just the same. build_site copies those to assets/img/ as well,
+# so the path is rewritten to there. Only a path that names such a file is touched.
+ROOT_IMAGE_RE = re.compile(r'(!\[[^\]]*\]\(\s*|<img\b[^>]*?\bsrc=")(?:\./)?([^)"\s:/#?][^)"\s:#?]*)(?=[)"\s])',
+                           re.IGNORECASE)
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"}
 
-def rewrite_wiki_image_paths(text: str, baseurl: str) -> str:
+
+def rewrite_wiki_image_paths(text: str, baseurl: str, wiki_image_dict: dict) -> str:
     def replace(match):
         path = match.group(2)[len("images/"):].lower()
         return f"{match.group(1)}{baseurl}/assets/img/{path}"
-    return WIKI_IMAGE_RE.sub(replace, text)
+
+    def replace_root(match):
+        key = urllib.parse.unquote(match.group(2)).lower()
+        if key not in wiki_image_dict:
+            return match.group(0)
+        return f"{match.group(1)}{baseurl}/assets/img/{key}"
+
+    text = WIKI_IMAGE_RE.sub(replace, text)
+    return ROOT_IMAGE_RE.sub(replace_root, text)
 
 # [label](Page-name) and [label](Page-name#section): the plain markdown way to link to another
 # page of the same wiki, next to [[Page name]]. Github resolves the target against the wiki,
@@ -434,7 +449,7 @@ def clean_md_file(md_fn_raw, md_fldr_out, wiki_file_dict, wiki_image_dict, navig
         cleaned_text = insert_blank_line_before_tables(text)
         cleaned_text = enable_markdown_in_details(cleaned_text)
         cleaned_text = localize_external_images(cleaned_text, baseurl)
-        cleaned_text = rewrite_wiki_image_paths(cleaned_text, baseurl)
+        cleaned_text = rewrite_wiki_image_paths(cleaned_text, baseurl, wiki_image_dict)
         if all_file_dicts:
             cleaned_text = rewrite_cross_wiki_links(cleaned_text, all_file_dicts)
 
@@ -740,6 +755,13 @@ def collect_site_dicts(site_name:str):
 
             wiki_image_dict[name.lower()] = file
 
+    # images kept outside images/, keyed on their path from the wiki root, see ROOT_IMAGE_RE
+    for file in glob.glob(f"{wiki_dir}/**/*", recursive=True):
+        rel_path = os.path.relpath(file, wiki_dir).replace("\\", "/")
+        if (os.path.splitext(file)[1].lower() in IMAGE_EXTENSIONS
+                and not rel_path.lower().startswith("images/")):
+            wiki_image_dict[rel_path.lower()] = file
+
     wiki_file_dict = {}
     navigation_structure, sections = {}, {}
     wiki_md_files = [f for f in glob.glob(f"{wiki_dir}/**/*.md", recursive=True)
@@ -786,6 +808,17 @@ def build_site(site_name:str, dicts_by_site:dict, run_jekyll:bool=True):
     if os.path.isdir(f"{wiki_dir}/images"):
         shutil.copytree(f"{wiki_dir}/images", f"{TEMPLATE_DIR}/assets/img")
         lowercase_tree(f"{TEMPLATE_DIR}/assets/img")
+
+    # and the images kept outside images/, to the same place, where their pages now look
+    for key, file in wiki_image_dict.items():
+        if key.startswith("images/"):
+            continue
+        target = f"{TEMPLATE_DIR}/assets/img/{key}"
+        if os.path.exists(target):
+            print(f"{file} is not published: images/ holds a file of the same name, which its pages will show")
+            continue
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        shutil.copyfile(file, target)
 
     # convert links in each file, collecting page records for sitemap.xml/llms.txt.
     # downloaded external images are copied in afterwards, once they are all known.
