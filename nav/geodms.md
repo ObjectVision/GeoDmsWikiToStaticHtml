@@ -68,6 +68,7 @@
     * [[Constant|Constant functions]]
     * [[Trigonometric|Trigonometric functions]]
     * [[Geometric|Geometric functions]]
+      * [[dms_split_convex_polygon]]
     * [[Network|Network functions]]
     * [[Grid|Grid functions]]
     * [[String|String functions]]
