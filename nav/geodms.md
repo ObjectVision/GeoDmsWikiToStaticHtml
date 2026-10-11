@@ -69,6 +69,8 @@
     * [[Trigonometric|Trigonometric functions]]
     * [[Geometric|Geometric functions]]
       * [[dms_split_convex_polygon]]
+      * [[dms_split_convex_polygon_keilsnoeyink]]
+      * [[dms_convex_polygon_connectivity]]
     * [[Network|Network functions]]
     * [[Grid|Grid functions]]
     * [[String|String functions]]
