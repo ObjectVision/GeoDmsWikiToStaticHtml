@@ -45,6 +45,8 @@
     * [[Closure]]
     * [[Variadic parameters|Variadic-parameters]]
     * [[map|Map]]
+    * [[fold|Fold]]
+    * [[fold_c|Fold_c]]
   * [[Visualisation Style]]
   * [[Configuration examples|Configuration examples]]
 - Reference
