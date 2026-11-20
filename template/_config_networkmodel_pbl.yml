@@ -1,9 +1,0 @@
-# overlay on _config.yml for the NetworkModel PBL subsite (jekyll --config _config.yml,_config_networkmodel_pbl.yml)
-title: NetworkModel PBL
-description: Documentation of the PBL accessibility network model
-baseurl: "/networkmodel_pbl"
-keep_files: [".git"]
-
-aux_links:
-  NetworkModel_PBL on Github: https://github.com/ObjectVision/NetworkModel_PBL
-

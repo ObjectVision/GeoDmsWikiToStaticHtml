@@ -37,11 +37,6 @@ SITES = {
         "wiki_git_url": "https://github.com/ObjectVision/RSopen.wiki.git",
         "baseurl": "/rsopen",
     },
-    "networkmodel_pbl": {
-        "title": "NetworkModel PBL",
-        "wiki_git_url": "https://github.com/ObjectVision/NetworkModel_PBL.wiki.git",
-        "baseurl": "/networkmodel_pbl",
-    },
     "crisp": {
         "title": "CRISP",
         "wiki_git_url": "https://github.com/ObjectVision/CRISP.wiki.git",

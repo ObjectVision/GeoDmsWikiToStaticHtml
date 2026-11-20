@@ -10,7 +10,6 @@ One run builds all wikis into a single `_out/` tree that is deployed as one whol
 |---|---|---|
 | GeoDMS | https://github.com/ObjectVision/GeoDMS/wiki | https://www.geodms.nl/ |
 | RSopen | https://github.com/ObjectVision/RSopen/wiki | https://www.geodms.nl/rsopen/ |
-| NetworkModel PBL | https://github.com/ObjectVision/NetworkModel_PBL/wiki | https://www.geodms.nl/networkmodel_pbl/ |
 | CRISP | https://github.com/ObjectVision/CRISP/wiki | https://www.geodms.nl/crisp/ |
 | GeoDMS Academy | https://github.com/ObjectVision/GeoDMS_Academy/wiki | https://www.geodms.nl/academy/ |
 
@@ -22,6 +21,8 @@ The wikis can link to each other (and to themselves) with their normal github wi
 1. add an entry to `SITES` in `convert_wiki_to_static_html.py` (name, wiki git url, baseurl);
 2. create `template/_config_<name>.yml` with its `title`, `baseurl` and links (copy an existing overlay);
 3. add the name to `keep_files` in `template/_config.yml`, and optionally a `nav_external_links` entry there so the main site links to it.
+
+**Removing a wiki:** undo those three steps and take its link out of `template/_includes/masthead.html`. The next deploy deletes its folder from the server, because the deploy removes whatever the build no longer produces. Links from the other wikis to its github url then stay github links.
 
 # Automatic deployment (recommended)
 The Github Actions workflow [.github/workflows/build-and-deploy.yml](.github/workflows/build-and-deploy.yml) builds all sites and deploys them to geodms.nl over FTPS. No local installation is needed. On a public repository Github Actions is free of charge.

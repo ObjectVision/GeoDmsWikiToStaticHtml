@@ -10,7 +10,6 @@
 {%- assign here = site.baseurl | default: "" -%}
 {%- assign at_rsopen = root | append: "/rsopen" -%}
 {%- assign at_academy = root | append: "/academy" -%}
-{%- assign at_network = root | append: "/networkmodel_pbl" -%}
 {%- assign at_crisp = root | append: "/crisp" -%}
 <header class="ov-masthead">
   <div class="ov-masthead-inner">
@@ -19,7 +18,6 @@
       <a href="{{ root }}/"{% if here == root %} class="on" aria-current="true"{% endif %}>Documentation</a>
       <a href="{{ root }}/academy/"{% if here == at_academy %} class="on" aria-current="true"{% endif %}>Academy</a>
       <a href="{{ root }}/rsopen/"{% if here == at_rsopen %} class="on" aria-current="true"{% endif %}>RSopen</a>
-      <a href="{{ root }}/networkmodel_pbl/"{% if here == at_network %} class="on" aria-current="true"{% endif %}>NetworkModel</a>
       <a href="{{ root }}/crisp/"{% if here == at_crisp %} class="on" aria-current="true"{% endif %}>CRISP</a>
       <a class="ov-out" href="https://www.objectvision.nl">Object Vision</a>
     </nav>

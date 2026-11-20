@@ -2,7 +2,7 @@
 
 ## What this repository is, and what it is not
 
-This is the machinery that turns five GitHub wikis into www.geodms.nl. **It holds almost no
+This is the machinery that turns four GitHub wikis into www.geodms.nl. **It holds almost no
 content of its own.** If a request is "change this sentence on geodms.nl", the change belongs
 in the wiki that sentence came from, not here.
 
@@ -12,14 +12,13 @@ in the wiki that sentence came from, not here.
 | **GeoDmsWikiToStaticHtml** (this one) | www.geodms.nl | the converter, the Jekyll template, the theme, the page tree, the deploy |
 | **ObjectVisionWebsite** | www.objectvision.nl | the company: projects, clients, publications, team |
 
-The five wikis, cloned into `wikis/` on every run:
+The four wikis, cloned into `wikis/` on every run:
 
 | site | wiki | url |
 |---|---|---|
 | geodms | ObjectVision/GeoDMS.wiki | www.geodms.nl |
 | academy | ObjectVision/GeoDMS_Academy.wiki | /academy/ |
 | rsopen | ObjectVision/RSopen.wiki | /rsopen/ |
-| networkmodel_pbl | ObjectVision/NetworkModel_PBL.wiki | /networkmodel_pbl/ |
 | crisp | ObjectVision/CRISP.wiki | /crisp/ |
 
 **geodms.nl documents the software; objectvision.nl carries the track record.** A list of

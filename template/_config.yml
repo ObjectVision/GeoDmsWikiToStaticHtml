@@ -33,4 +33,4 @@ nav_external_links:
 
 # the root site builds into _out/ where the subsites live in subdirectories;
 # keep_files stops jekyll from deleting them when it cleans its destination
-keep_files: [".git", "rsopen", "networkmodel_pbl", "crisp", "academy"]
+keep_files: [".git", "rsopen", "crisp", "academy"]
